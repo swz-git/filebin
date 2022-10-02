@@ -1,12 +1,12 @@
-use actix_web::{get, services, web, App, Handler, Responder};
+use rocket::{Route, State};
 use sled::Db;
 
 #[get("/")]
-async fn root(db: web::Data<Db>) -> impl Responder {
-    db.get("a").expect("shit");
-    format!("API Is live")
+fn index(db: &State<Db>) -> &'static str {
+    log::debug!("{:?}", db.get("a").expect("shit"));
+    "API Is live"
 }
 
-pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::scope("/api").service(root));
+pub fn get_routes() -> Vec<Route> {
+    routes![index]
 }

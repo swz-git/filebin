@@ -1,6 +1,8 @@
 {
   "cSpell.words": [
     "actix",
-    "chrono"
+    "bincode",
+    "chrono",
+    "dbman"
   ]
 }

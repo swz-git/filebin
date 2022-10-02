@@ -1,9 +1,12 @@
-use actix_files::Files;
-use actix_web::{get, web, App, HttpServer, Responder};
-use log::{info, trace, warn};
+#[macro_use]
+extern crate rocket;
 use std::env;
 
+use rocket::Config;
+
 mod api;
+pub mod dbman;
+mod static_files;
 
 #[cfg(debug_assertions)]
 fn get_log_level() -> log::LevelFilter {
@@ -35,26 +38,21 @@ fn setup_logger() -> Result<(), fern::InitError> {
     Ok(())
 }
 
-struct AppData {
-    db: sled::Db,
-}
-
-#[actix_web::main] // or #[tokio::main]
-async fn main() -> std::io::Result<()> {
+#[launch]
+fn rocket() -> _ {
     setup_logger().expect("Couldn't initialize logger");
 
-    let port = 8080;
-    let server = HttpServer::new(|| {
-        let db = sled::open(env::var("DB_PATH").unwrap_or("./trunk_db".to_string()))
-            .expect("Couldn't open database");
+    let db = sled::open(env::var("DB_PATH").unwrap_or("./trunk_db".to_string()))
+        .expect("Couldn't open database");
 
-        App::new()
-            .app_data(web::Data::new(AppData { db }))
-            .route("/hello", web::get().to(|| async { "Hello World!" }))
-            .configure(api::config)
-    })
-    .bind(("127.0.0.1", port))?
-    .run();
-    info!("Listening on port {}", port);
-    server.await
+    let port = 8080;
+    // info!("Listening on port {}", port);
+    rocket::build()
+        .configure(Config {
+            port,
+            ..Config::default()
+        })
+        .manage(db)
+        .mount("/api", api::get_routes())
+        .mount("/", static_files::get_routes())
 }
