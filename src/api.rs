@@ -40,7 +40,7 @@ async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
     uid
 }
 
-// TODO: Optimize this, for some reason it's pretty slow. At least when running ddosify
+// TODO: Optimize this, for some reason it's pretty slow. At least when running ddosify https://github.com/flamegraph-rs/flamegraph
 #[get("/file/download/<uid>")]
 async fn download(uid: String, db: &State<Db>) -> Option<(ContentType, Vec<u8>)> {
     let info = dbman::read_file_info(uid.clone(), db);
