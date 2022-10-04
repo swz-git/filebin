@@ -1,4 +1,4 @@
-use std::{borrow::Cow, env, fs, path::Path};
+use std::{env, fs};
 
 use rocket::{form, fs::TempFile, http::ContentType, Route, State};
 use sled::Db;
@@ -45,7 +45,7 @@ async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
 async fn download(uid: String, db: &State<Db>) -> Option<(ContentType, Vec<u8>)> {
     let info = dbman::read_file_info(uid.clone(), db);
     let mime = info.mime_type;
-    let split_mime: Vec<&str> = mime.split("/").collect();
+    let split_mime: Vec<&str> = mime.split('/').collect();
     let content_type = ContentType::new(split_mime[0].to_string(), split_mime[1].to_string());
 
     Some((content_type, dbman::read_file(uid, db)))

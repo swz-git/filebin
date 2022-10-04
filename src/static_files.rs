@@ -14,7 +14,7 @@ fn dist(file: PathBuf) -> Option<(ContentType, Cow<'static, [u8]>)> {
     log::debug!("{}", filename);
     let mut maybe_asset = Asset::get(&filename);
     if maybe_asset.is_none() {
-        if filename == "" {
+        if filename.is_empty() {
             filename += "index.html";
         } else {
             filename += "/index.html";

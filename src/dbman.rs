@@ -14,7 +14,7 @@ Metadata is stored with a key like this: `trunk:metadata:[ID]`
 The value is just the FileInfo struct encoded with bincode
 */
 
-#[derive(Encode, Decode, Deserialize, Serialize, PartialEq, Debug)]
+#[derive(Encode, Decode, Deserialize, Serialize, PartialEq, Eq, Debug)]
 pub struct FileInfo {
     /// Should be a valid mime type
     pub mime_type: String,
@@ -53,8 +53,7 @@ pub fn read_file_info(id: String, db: &State<Db>) -> FileInfo {
     let encoded_file_info: &[u8] = &db
         .get(format!("trunk:metadata:{}", id))
         .expect("Couldn't read file info")
-        .unwrap()
-        .to_vec();
+        .unwrap();
     let file_info: FileInfo = decode_from_slice(encoded_file_info, BINCODE_CONFIG)
         .expect("Couldn't decode file info")
         .0;
