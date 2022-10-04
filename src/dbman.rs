@@ -46,6 +46,7 @@ pub fn store_file(file: Vec<u8>, file_info: &FileInfo, db: &State<Db>) {
         encoded_file_info,
     )
     .expect("Failed writing file info");
+    log::info!("Write file {}", file_info.id);
 }
 
 // TODO: should we really use &State<Db> and not just &Db, maybe both???
