@@ -2,11 +2,15 @@
 extern crate rocket;
 use std::env;
 
-use rocket::Config;
+use rocket::{
+    data::{ByteUnit, Limits},
+    Config,
+};
 
 mod api;
 pub mod dbman;
 mod static_files;
+pub mod utils;
 
 #[cfg(debug_assertions)]
 fn get_log_level() -> log::LevelFilter {
@@ -45,11 +49,16 @@ fn rocket() -> _ {
     let db = sled::open(env::var("DB_PATH").unwrap_or("./trunk_db".to_string()))
         .expect("Couldn't open database");
 
+    let one_gib: ByteUnit = "1GiB".parse().unwrap();
+
+    // TODO: config this
+    let limits = Limits::new().limit("file", one_gib); // 1gb
+
     let port = 8080;
-    // info!("Listening on port {}", port);
     rocket::build()
         .configure(Config {
             port,
+            limits,
             ..Config::default()
         })
         .manage(db)
