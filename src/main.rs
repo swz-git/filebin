@@ -2,6 +2,8 @@
 extern crate rocket;
 use std::env;
 
+extern crate mime_sniffer;
+
 use rocket::{
     data::{ByteUnit, Limits},
     Config,

@@ -3,6 +3,7 @@
     "actix",
     "bincode",
     "chrono",
-    "dbman"
+    "dbman",
+    "nanos"
   ]
 }

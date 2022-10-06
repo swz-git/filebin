@@ -22,3 +22,5 @@ uuid = { version = "1.1.2", features = [
   "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
 ] }
 base64 = "0.13.0"
+mime-sniffer = "0.1.2"
+mime_guess = "2.0.4"
