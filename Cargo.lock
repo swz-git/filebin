@@ -1820,6 +1820,7 @@ dependencies = [
  "mime",
  "mime-sniffer",
  "mime_guess",
+ "percent-encoding 2.2.0",
  "rocket",
  "rust-embed",
  "serde",

@@ -24,3 +24,4 @@ uuid = { version = "1.1.2", features = [
 base64 = "0.13.0"
 mime-sniffer = "0.1.2"
 mime_guess = "2.0.4"
+percent-encoding = "2.2.0"

@@ -1,6 +1,7 @@
 use std::{env, fs};
 
 use mime_sniffer::MimeTypeSniffer;
+use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use rocket::{form, fs::TempFile, http::ContentType, response::Redirect, Route, State};
 use sled::Db;
 use uuid::Uuid;
@@ -73,7 +74,7 @@ async fn download(
     db: &State<Db>,
 ) -> Option<(ContentType, Vec<u8>)> {
     let info = dbman::read_file_info(uid.clone(), db);
-    if filename.is_none() || info.name != filename.unwrap_or(info.name.clone()) {
+    if info.name != filename.unwrap_or(info.name.clone()) {
         // TODO: \/ \/ \/
         todo!("Redirect to /file/download/<uid>/<filename>")
     }
@@ -84,7 +85,21 @@ async fn download(
     Some((content_type, dbman::read_file(uid, db)))
 }
 
-// TODO: Redirect /file/download/<uid> to /file/download/<uid>/<filename>
+#[get("/file/download/<uid>")]
+async fn redirect_download(uid: String, db: &State<Db>) -> Redirect {
+    let info = dbman::read_file_info(uid.clone(), db);
+
+    const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`');
+
+    let redirect_uri = format!(
+        "/api/file/download/{}/{}",
+        uid,
+        utf8_percent_encode(&info.name, FRAGMENT)
+    );
+
+    log::debug!("{}, {}, {}", uid, info.name, redirect_uri);
+    Redirect::to(redirect_uri.to_string())
+}
 
 #[get("/")]
 fn index(db: &State<Db>) -> &'static str {
@@ -93,5 +108,5 @@ fn index(db: &State<Db>) -> &'static str {
 }
 
 pub fn get_routes() -> Vec<Route> {
-    routes![index, upload, download]
+    routes![index, upload, download, redirect_download]
 }
