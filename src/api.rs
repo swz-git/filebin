@@ -1,5 +1,6 @@
 use std::{env, fs};
 
+use either::*;
 use mime_sniffer::MimeTypeSniffer;
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use rocket::{form, fs::TempFile, http::ContentType, response::Redirect, Route, State};
@@ -67,37 +68,43 @@ async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
 }
 
 // TODO: Optimize this, for some reason it's pretty slow. At least when running ddosify https://github.com/flamegraph-rs/flamegraph
-#[get("/file/download/<uid>/<filename>")]
+#[get("/file/<uid>/<filename>")]
 async fn download(
     uid: String,
     filename: Option<String>,
     db: &State<Db>,
-) -> Option<(ContentType, Vec<u8>)> {
+) -> Either<Redirect, Option<(ContentType, Vec<u8>)>> {
     let info = dbman::read_file_info(uid.clone(), db);
     if info.name != filename.unwrap_or(info.name.clone()) {
-        // TODO: \/ \/ \/
-        todo!("Redirect to /file/download/<uid>/<filename>")
+        const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`');
+
+        let redirect_uri = format!(
+            "/api/file/{}/{}",
+            uid,
+            utf8_percent_encode(&info.name, FRAGMENT)
+        );
+
+        return Left(Redirect::to(redirect_uri.to_string()));
     }
     let mime = info.mime_type;
     let split_mime: Vec<&str> = mime.split('/').collect();
     let content_type = ContentType::new(split_mime[0].to_string(), split_mime[1].to_string());
 
-    Some((content_type, dbman::read_file(uid, db)))
+    Right(Some((content_type, dbman::read_file(uid, db))))
 }
 
-#[get("/file/download/<uid>")]
+#[get("/file/<uid>")]
 async fn redirect_download(uid: String, db: &State<Db>) -> Redirect {
     let info = dbman::read_file_info(uid.clone(), db);
 
     const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`');
 
     let redirect_uri = format!(
-        "/api/file/download/{}/{}",
+        "/api/file/{}/{}",
         uid,
         utf8_percent_encode(&info.name, FRAGMENT)
     );
 
-    log::debug!("{}, {}, {}", uid, info.name, redirect_uri);
     Redirect::to(redirect_uri.to_string())
 }
 

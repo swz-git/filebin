@@ -9,6 +9,8 @@ use rocket::{
     Config,
 };
 
+// TODO: Memory leak? upload file + ddosify get file = memory go brrrrrr
+
 mod api;
 pub mod dbman;
 mod static_files;
