@@ -1,6 +1,5 @@
 use bincode::{serde::decode_from_slice, Decode, Encode};
 use chrono::{DateTime, Utc};
-use rocket::State;
 use serde::{Deserialize, Serialize};
 use sled::Db;
 
@@ -35,8 +34,7 @@ pub struct FileInfo {
 
 const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
 
-// TODO: should we really use &State<Db> and not just &Db, maybe both???
-pub fn store_file(file: Vec<u8>, file_info: &FileInfo, db: &State<Db>) {
+pub fn store_file(file: Vec<u8>, file_info: &FileInfo, db: &Db) {
     let encoded_file_info =
         bincode::encode_to_vec(file_info, BINCODE_CONFIG).expect("Couldn't encode file_info");
     db.insert(format!("trunk:storage:{}", file_info.id), file)
@@ -49,8 +47,7 @@ pub fn store_file(file: Vec<u8>, file_info: &FileInfo, db: &State<Db>) {
     log::info!("Write file {}", file_info.id);
 }
 
-// TODO: should we really use &State<Db> and not just &Db, maybe both???
-pub fn read_file_info(id: String, db: &State<Db>) -> FileInfo {
+pub fn read_file_info(id: String, db: &Db) -> FileInfo {
     let encoded_file_info: &[u8] = &db
         .get(format!("trunk:metadata:{}", id))
         .expect("Couldn't read file info")
@@ -62,8 +59,7 @@ pub fn read_file_info(id: String, db: &State<Db>) -> FileInfo {
     file_info
 }
 
-// TODO: should we really use &State<Db> and not just &Db, maybe both???
-pub fn read_file(id: String, db: &State<Db>) -> Vec<u8> {
+pub fn read_file(id: String, db: &Db) -> Vec<u8> {
     db.get(format!("trunk:storage:{}", id))
         .expect("Couldn't read file")
         .unwrap()
