@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use handlebars::Handlebars;
-use rocket::{http::RawStr, response::content, Route, State};
+use rocket::{response::content, Route, State};
 use rust_embed::RustEmbed;
 use serde_json::json;
 use sled::Db;

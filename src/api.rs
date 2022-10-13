@@ -2,7 +2,6 @@ use std::{env, fs};
 
 use either::*;
 use mime_sniffer::MimeTypeSniffer;
-use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use rocket::{form, fs::TempFile, http::ContentType, response::Redirect, Route, State};
 use sled::Db;
 use uuid::Uuid;
