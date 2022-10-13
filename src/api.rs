@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     dbman::{self, FileInfo},
-    utils::unique_id,
+    utils::{get_download_link, unique_id},
 };
 
 // TODO: rate limit, maybe based on ip? accounts (probably not)? api keys?
@@ -38,6 +38,7 @@ fn find_mime_from_file(file: &form::Form<TempFile>, file_bin: &Vec<u8>) -> Optio
     None
 }
 
+// TODO: This fails on bigger files, bigger than about 1mb
 #[post("/file", data = "<file>")]
 async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
     let uid = unique_id();
@@ -68,6 +69,7 @@ async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
 }
 
 // TODO: Optimize this, for some reason it's pretty slow. At least when running ddosify https://github.com/flamegraph-rs/flamegraph
+// TODO: Cookies can be accessed with js running in uploaded html file, this is a security risk
 #[get("/file/<uid>/<filename>")]
 async fn download(
     uid: String,
@@ -75,17 +77,14 @@ async fn download(
     db: &State<Db>,
 ) -> Either<Redirect, Option<(ContentType, Vec<u8>)>> {
     let info = dbman::read_file_info(uid.clone(), db);
-    if info.name != filename.unwrap_or(info.name.clone()) {
-        const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`');
 
-        let redirect_uri = format!(
-            "/api/file/{}/{}",
-            uid,
-            utf8_percent_encode(&info.name, FRAGMENT)
-        );
+    if info.name != filename.unwrap_or(info.name.clone()) {
+        // TODO: get_download_link gets FileInfo from the db, but we already have FileInfo in the info variable here. This wastes a database call.
+        let redirect_uri = get_download_link(uid, db);
 
         return Left(Redirect::to(redirect_uri.to_string()));
     }
+
     let mime = info.mime_type;
     let split_mime: Vec<&str> = mime.split('/').collect();
     let content_type = ContentType::new(split_mime[0].to_string(), split_mime[1].to_string());
@@ -95,15 +94,7 @@ async fn download(
 
 #[get("/file/<uid>")]
 async fn redirect_download(uid: String, db: &State<Db>) -> Redirect {
-    let info = dbman::read_file_info(uid.clone(), db);
-
-    const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`');
-
-    let redirect_uri = format!(
-        "/api/file/{}/{}",
-        uid,
-        utf8_percent_encode(&info.name, FRAGMENT)
-    );
+    let redirect_uri = get_download_link(uid, db);
 
     Redirect::to(redirect_uri.to_string())
 }

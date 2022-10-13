@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/common.css">
+  <title>trunk - {{ filename }} ({{ id }})</title>
+</head>
+<body>
+  <h1 class="title">trunk - {{ filename }}</h1>
+  <div class="imgContainer">
+    <iframe src="{{ img }}" alt="{{ filename }}" srcset=""></iframe>
+  </div>
+  <style>
+    .imgContainer {
+      height: 70%;
+      width: 80%;
+      margin: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    iframe {
+      height: 100%;
+      width: 100%;
+      border: none;
+      object-fit: scale-down;
+    }
+  </style>
+</body>
+</html>

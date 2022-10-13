@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Dropzone makes file drop areas much easier and cleaner looking -->
+  <script src="https://unpkg.com/dropzone@6.0.0-beta.1/dist/dropzone-min.js"></script>
+  <link href="https://unpkg.com/dropzone@6.0.0-beta.1/dist/dropzone.css" rel="stylesheet" type="text/css" />
+
+  <link rel="stylesheet" href="/common.css">
+  <title>trunk - upload a file</title>
+</head>
+<body>
+  <h1 class="title">trunk</h1>
+
+  <form action="/api/file" class="dropzone" id="my-dropzone"></form>
+  <script>
+    Dropzone.options.myDropzone = { // camelized version of the `id`
+      paramName: "file", // The name that will be used to transfer the file
+      maxFilesize: 1000, // MB //TODO: should sync up with the actual backend limit
+      accept: function(file, done) {
+        done()
+      },
+      init: function() {
+        this.on("success", stuff => {
+          window.location = "/?file=" + stuff.xhr.responseText
+        })
+        this.on("error", e => {
+          console.error(e)
+          alert("Sorry, we encountered an error uploading your file.")
+          window.location = window.location
+        })
+      }
+    }
+    Dropzone.discover()
+  </script>
+  <style>
+    form {
+      height: 70%;
+      width: 80%;
+      margin: auto;
+    }
+    .dz-default {
+      height: 100%;
+      margin: 0 !important;
+    }
+    .dz-button {
+      height: 100%;
+      font-size: 2rem !important;
+    }
+  </style>
+</body>
+</html>

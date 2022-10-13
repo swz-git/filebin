@@ -34,6 +34,7 @@ pub struct FileInfo {
 
 const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
 
+// TODO: make all of these return option or results instead
 pub fn store_file(file: Vec<u8>, file_info: &FileInfo, db: &Db) {
     let encoded_file_info =
         bincode::encode_to_vec(file_info, BINCODE_CONFIG).expect("Couldn't encode file_info");

@@ -13,6 +13,7 @@ use rocket::{
 
 mod api;
 pub mod dbman;
+mod pages;
 mod static_files;
 pub mod utils;
 
@@ -41,7 +42,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
         })
         .level(log_level)
         .chain(std::io::stdout())
-        .chain(fern::log_file("output.log")?)
+        .chain(fern::log_file("trunk.log")?)
         .apply()?;
     Ok(())
 }
@@ -67,5 +68,6 @@ fn rocket() -> _ {
         })
         .manage(db)
         .mount("/api", api::get_routes())
+        .mount("/", pages::get_routes())
         .mount("/", static_files::get_routes())
 }
