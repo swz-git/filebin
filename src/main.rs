@@ -56,7 +56,7 @@ fn rocket() -> _ {
 
     let one_gib: ByteUnit = "1GiB".parse().unwrap();
 
-    // TODO: config this
+    // TODO: config this with figment (https://docs.rs/figment/latest/figment/#overview)
     let limits = Limits::new().limit("file", one_gib); // 1gb
 
     let port = 8080;
