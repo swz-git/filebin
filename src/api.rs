@@ -28,7 +28,6 @@ fn find_mime_from_file(file: &TempFile, file_bin: &Vec<u8>) -> Option<String> {
     None
 }
 
-// TODO: This fails on bigger files, bigger than about 1mb
 #[post("/file", data = "<file>")]
 async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
     let uid = unique_id();
