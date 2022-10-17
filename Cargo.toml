@@ -27,3 +27,4 @@ mime_guess = "2.0.4"
 handlebars = "4.3.5"
 serde_json = "1.0.86"
 regex = "1.6.0"
+figment = { version = "0.10.8", features = ["env", "toml"] }

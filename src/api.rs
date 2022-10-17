@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::{
     dbman::{self, FileInfo},
     utils::unique_id,
+    AppConfig,
 };
 
 // TODO: rate limit, maybe based on ip? accounts (probably not)? api keys?
@@ -65,13 +66,11 @@ struct FileResponder {
 }
 
 #[get("/file/<uid>")]
-async fn download(uid: String, db: &State<Db>) -> Option<FileResponder> {
+async fn download(uid: String, db: &State<Db>, config: &State<AppConfig>) -> Option<FileResponder> {
     let info = dbman::read_file_info(uid.clone(), db);
     let contents = dbman::read_file(uid, db);
 
-    // TODO: Config this
-    let display_filter =
-        Regex::new(r"^((audio|image|video)/[a-z.+-]+|(application/json|text/plain))$").unwrap();
+    let display_filter = Regex::new(&config.allowed_preview_mime_regex).unwrap();
 
     let should_preview = display_filter.is_match(&info.mime_type);
 

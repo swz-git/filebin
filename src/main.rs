@@ -4,10 +4,15 @@ use std::env;
 
 extern crate mime_sniffer;
 
+use figment::{
+    providers::{Env, Format, Serialized, Toml},
+    Figment,
+};
 use rocket::{
-    data::{Limits, ToByteUnit},
+    data::{ByteUnit, Limits, ToByteUnit},
     Config,
 };
+use serde::{Deserialize, Serialize};
 
 // TODO: Memory leak? upload file + ddosify get file = memory go brrrrrr
 
@@ -47,17 +52,40 @@ fn setup_logger() -> Result<(), fern::InitError> {
     Ok(())
 }
 
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
+struct AppConfig {
+    file_size_limit: ByteUnit,
+    allowed_preview_mime_regex: String,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        AppConfig {
+            file_size_limit: 1.gibibytes(),
+            allowed_preview_mime_regex:
+                r"^((audio|image|video)/[a-z.+-]+|(application/json|text/plain))$".to_string(),
+        }
+    }
+}
+
 #[launch]
 fn rocket() -> _ {
     setup_logger().expect("Couldn't initialize logger");
 
+    let figment = Figment::from(Serialized::defaults(AppConfig::default()))
+        .merge(Env::prefixed("TRUNK_"))
+        .merge(Toml::file("trunk.toml"));
+
+    let config: AppConfig = figment.extract().expect("Couldn't initialize config");
+
+    log::debug!("AAAA: {}", config.file_size_limit);
+
     let db = sled::open(env::var("DB_PATH").unwrap_or("./trunk_db".to_string()))
         .expect("Couldn't open database");
 
-    // TODO: config this with figment (https://docs.rs/figment/latest/figment/#overview)
     let limits = Limits::new()
-        .limit("data-form", (1024 + 100).mebibytes())
-        .limit("file", 1.gibibytes());
+        .limit("data-form", config.file_size_limit + 100.kibibytes())
+        .limit("file", config.file_size_limit);
 
     let port = 8080;
     rocket::build()
@@ -67,6 +95,7 @@ fn rocket() -> _ {
             ..Config::default()
         })
         .manage(db)
+        .manage(config)
         .mount("/api", api::get_routes())
         .mount("/", pages::get_routes())
         .mount("/", static_files::get_routes())
