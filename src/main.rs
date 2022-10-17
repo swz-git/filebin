@@ -55,7 +55,9 @@ fn rocket() -> _ {
         .expect("Couldn't open database");
 
     // TODO: config this with figment (https://docs.rs/figment/latest/figment/#overview)
-    let limits = Limits::new().limit("file", 1.gigabytes()); // 1gb
+    let limits = Limits::new()
+        .limit("data-form", (1024 + 100).mebibytes())
+        .limit("file", 1.gibibytes());
 
     let port = 8080;
     rocket::build()
