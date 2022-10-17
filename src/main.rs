@@ -15,6 +15,9 @@ use rocket::{
 use serde::{Deserialize, Serialize};
 
 // TODO: Memory leak? upload file + ddosify get file = memory go brrrrrr
+// Seems to be sled which is insanely slow at getting data when the database is big
+// fuck sled? https://github.com/search?l=Rust&o=desc&q=key+value&s=stars&type=Repositories
+// looks cool: https://github.com/nomic-io/merk
 
 mod api;
 pub mod dbman;
