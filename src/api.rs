@@ -2,12 +2,7 @@ use std::{env, fs};
 
 use mime_sniffer::MimeTypeSniffer;
 use regex::Regex;
-use rocket::{
-    form,
-    fs::{FileName, TempFile},
-    http::Header,
-    Route, State,
-};
+use rocket::{form, fs::TempFile, http::Header, Route, State};
 use sled::Db;
 use uuid::Uuid;
 
@@ -18,9 +13,8 @@ use crate::{
 
 // TODO: rate limit, maybe based on ip? accounts (probably not)? api keys?
 
-// TODO: fix weird arg types?
 /// Find mime from file/contents, try and get the mime type in this order; browser, sniffer, file extension
-fn find_mime_from_file(file: &form::Form<TempFile>, file_bin: &Vec<u8>) -> Option<String> {
+fn find_mime_from_file(file: &TempFile, file_bin: &Vec<u8>) -> Option<String> {
     let browser_mime = file.content_type();
     if browser_mime.is_some() {
         return Some(browser_mime.unwrap().to_string());
@@ -78,7 +72,7 @@ async fn download(uid: String, db: &State<Db>) -> Option<FileResponder> {
 
     // TODO: Config this
     let display_filter =
-        Regex::new(r"^((audio|image|video)\/[a-z.+-]+|(application\/json|text\/plain))$").unwrap();
+        Regex::new(r"^((audio|image|video)/[a-z.+-]+|(application/json|text/plain))$").unwrap();
 
     let should_preview = display_filter.is_match(&info.mime_type);
 
