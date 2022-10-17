@@ -1,14 +1,19 @@
 use std::{env, fs};
 
-use either::*;
 use mime_sniffer::MimeTypeSniffer;
-use rocket::{form, fs::TempFile, http::ContentType, response::Redirect, Route, State};
+use regex::Regex;
+use rocket::{
+    form,
+    fs::{FileName, TempFile},
+    http::Header,
+    Route, State,
+};
 use sled::Db;
 use uuid::Uuid;
 
 use crate::{
     dbman::{self, FileInfo},
-    utils::{get_download_link, unique_id},
+    utils::unique_id,
 };
 
 // TODO: rate limit, maybe based on ip? accounts (probably not)? api keys?
@@ -24,14 +29,6 @@ fn find_mime_from_file(file: &form::Form<TempFile>, file_bin: &Vec<u8>) -> Optio
     let sniffer_mime = file_bin.sniff_mime_type();
     if sniffer_mime.is_some() {
         return Some(sniffer_mime.unwrap().to_string());
-    }
-
-    let file_name = file.name();
-    if file_name.is_some() {
-        let ext_mime = mime_guess::from_path(file_name.unwrap()).first();
-        if ext_mime.is_some() {
-            return Some(ext_mime.unwrap().to_string());
-        }
     }
 
     None
@@ -57,7 +54,7 @@ async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
             upload_date: chrono::offset::Utc::now(),
             deletion_key: Uuid::new_v4().to_string(),
             id: uid.clone(),
-            name: file.name().unwrap_or(&"unknown").to_string(),
+            name: file.name().unwrap_or("unknown").to_string(), // TODO: file extension disappears?
         },
         db,
     );
@@ -67,35 +64,40 @@ async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
     uid
 }
 
-// TODO: Optimize this, for some reason it's pretty slow. At least when running ddosify https://github.com/flamegraph-rs/flamegraph
-// TODO: Cookies can be accessed with js running in uploaded html file, this is a security risk
-#[get("/file/<uid>/<filename>")]
-async fn download(
-    uid: String,
-    filename: Option<String>,
-    db: &State<Db>,
-) -> Either<Redirect, Option<(ContentType, Vec<u8>)>> {
-    let info = dbman::read_file_info(uid.clone(), db);
-
-    if info.name != filename.unwrap_or(info.name.clone()) {
-        // TODO: get_download_link gets FileInfo from the db, but we already have FileInfo in the info variable here. This wastes a database call.
-        let redirect_uri = get_download_link(uid, db);
-
-        return Left(Redirect::to(redirect_uri.to_string()));
-    }
-
-    let mime = info.mime_type;
-    let split_mime: Vec<&str> = mime.split('/').collect();
-    let content_type = ContentType::new(split_mime[0].to_string(), split_mime[1].to_string());
-
-    Right(Some((content_type, dbman::read_file(uid, db))))
+#[derive(Responder)]
+struct FileResponder {
+    data: Vec<u8>,
+    content_type: Header<'static>, // TODO: array of headers would be cleaner
+    content_disposition: Header<'static>,
 }
 
 #[get("/file/<uid>")]
-async fn redirect_download(uid: String, db: &State<Db>) -> Redirect {
-    let redirect_uri = get_download_link(uid, db);
+async fn download(uid: String, db: &State<Db>) -> Option<FileResponder> {
+    let info = dbman::read_file_info(uid.clone(), db);
+    let contents = dbman::read_file(uid, db);
 
-    Redirect::to(redirect_uri.to_string())
+    // TODO: Config this
+    let display_filter =
+        Regex::new(r"^((audio|image|video)\/[a-z.+-]+|(application\/json|text\/plain))$").unwrap();
+
+    let should_preview = display_filter.is_match(&info.mime_type);
+
+    Some(FileResponder {
+        data: contents,
+        content_type: Header::new("Content-Type", info.mime_type),
+        content_disposition: Header::new(
+            "Content-Disposition",
+            format!(
+                "{}; filename=\"{}\"",
+                if should_preview {
+                    "inline"
+                } else {
+                    "attachment"
+                },
+                info.name // TODO: Extension? Filter so it won't be able to escape the ""s if that matters?
+            ),
+        ),
+    })
 }
 
 #[get("/")]
@@ -105,5 +107,5 @@ fn index(db: &State<Db>) -> &'static str {
 }
 
 pub fn get_routes() -> Vec<Route> {
-    routes![index, upload, download, redirect_download]
+    routes![index, upload, download]
 }

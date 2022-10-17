@@ -5,7 +5,7 @@ use std::env;
 extern crate mime_sniffer;
 
 use rocket::{
-    data::{ByteUnit, Limits},
+    data::{ByteUnit, Limits, ToByteUnit},
     Config,
 };
 
@@ -54,10 +54,8 @@ fn rocket() -> _ {
     let db = sled::open(env::var("DB_PATH").unwrap_or("./trunk_db".to_string()))
         .expect("Couldn't open database");
 
-    let one_gib: ByteUnit = "1GiB".parse().unwrap();
-
     // TODO: config this with figment (https://docs.rs/figment/latest/figment/#overview)
-    let limits = Limits::new().limit("file", one_gib); // 1gb
+    let limits = Limits::new().limit("file", 1.gigabytes()); // 1gb
 
     let port = 8080;
     rocket::build()

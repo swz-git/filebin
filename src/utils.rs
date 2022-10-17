@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use sled::Db;
 
-use crate::dbman;
+use crate::dbman::{self, FileInfo};
 
 pub fn unique_id() -> String {
     let time = SystemTime::now()
@@ -21,9 +21,7 @@ pub fn unique_id() -> String {
 }
 
 /// Given the uid and a reference to the db, get the link used to download a file.
-pub fn get_download_link(uid: String, db: &Db) -> String {
-    let info = dbman::read_file_info(uid.clone(), db);
-
+pub fn get_download_link(uid: String, info: &FileInfo) -> String {
     const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`');
 
     let redirect_uri = format!(

@@ -40,7 +40,7 @@ fn file(file: String, db: &State<Db>) -> content::RawHtml<String> {
             &json!({
                 "id": info.id,
                 "filename": info.name,
-                "img": utils::get_download_link(uid, db)
+                "img": utils::get_download_link(uid, &info)
             }),
         )
         .expect("rendering failed"),
