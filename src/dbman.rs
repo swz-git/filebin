@@ -1,7 +1,7 @@
 use bincode::{serde::decode_from_slice, Decode, Encode};
 use chrono::{DateTime, Utc};
+use rocksdb::DB;
 use serde::{Deserialize, Serialize};
-use sled::Db;
 
 /*
 # Custom database using sled
@@ -35,12 +35,12 @@ pub struct FileInfo {
 const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
 
 // TODO: make all of these return option or results instead
-pub fn store_file(file: Vec<u8>, file_info: &FileInfo, db: &Db) {
+pub fn store_file(file: Vec<u8>, file_info: &FileInfo, db: &DB) {
     let encoded_file_info =
         bincode::encode_to_vec(file_info, BINCODE_CONFIG).expect("Couldn't encode file_info");
-    db.insert(format!("trunk:storage:{}", file_info.id), file)
+    db.put(format!("trunk:storage:{}", file_info.id), file)
         .expect("Failed writing file");
-    db.insert(
+    db.put(
         format!("trunk:metadata:{}", file_info.id),
         encoded_file_info,
     )
@@ -48,7 +48,7 @@ pub fn store_file(file: Vec<u8>, file_info: &FileInfo, db: &Db) {
     log::info!("Write file {}", file_info.id);
 }
 
-pub fn read_file_info(id: String, db: &Db) -> FileInfo {
+pub fn read_file_info(id: String, db: &DB) -> FileInfo {
     let encoded_file_info: &[u8] = &db
         .get(format!("trunk:metadata:{}", id))
         .expect("Couldn't read file info")
@@ -60,7 +60,7 @@ pub fn read_file_info(id: String, db: &Db) -> FileInfo {
     file_info
 }
 
-pub fn read_file(id: String, db: &Db) -> Vec<u8> {
+pub fn read_file(id: String, db: &DB) -> Vec<u8> {
     db.get(format!("trunk:storage:{}", id))
         .expect("Couldn't read file")
         .unwrap()

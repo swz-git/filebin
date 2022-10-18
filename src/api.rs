@@ -2,8 +2,8 @@ use std::{env, fs};
 
 use mime_sniffer::MimeTypeSniffer;
 use regex::Regex;
-use rocket::{form, fs::TempFile, http::Header, Route, State};
-use sled::Db;
+use rocket::{data::ToByteUnit, form, fs::TempFile, http::Header, Route, State};
+use rocksdb::DB;
 use uuid::Uuid;
 
 use crate::{
@@ -30,7 +30,7 @@ fn find_mime_from_file(file: &TempFile, file_bin: &Vec<u8>) -> Option<String> {
 }
 
 #[post("/file", data = "<file>")]
-async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
+async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<DB>) -> String {
     let uid = unique_id();
     let file_path = env::temp_dir().join(uid.clone() + ".UNSAFE.file");
     file.persist_to(&file_path)
@@ -66,9 +66,9 @@ struct FileResponder {
 }
 
 #[get("/file/<uid>")]
-async fn download(uid: String, db: &State<Db>, config: &State<AppConfig>) -> Option<FileResponder> {
+async fn download(uid: String, db: &State<DB>, config: &State<AppConfig>) -> Option<FileResponder> {
     let info = dbman::read_file_info(uid.clone(), db);
-    let contents = dbman::read_file(uid, db);
+    let contents = Vec::<u8>::with_capacity(12.mebibytes().as_u64() as usize);
 
     let display_filter = Regex::new(&config.allowed_preview_mime_regex).unwrap();
 
@@ -93,8 +93,8 @@ async fn download(uid: String, db: &State<Db>, config: &State<AppConfig>) -> Opt
 }
 
 #[get("/")]
-fn index(db: &State<Db>) -> &'static str {
-    log::debug!("{:?}", db.get("a").expect("shit"));
+fn index(db: &State<DB>) -> &'static str {
+    db.flush().expect("couldn't flush");
     "API Is live"
 }
 

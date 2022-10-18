@@ -2,9 +2,9 @@ use std::error::Error;
 
 use handlebars::Handlebars;
 use rocket::{response::content, Route, State};
+use rocksdb::DB;
 use rust_embed::RustEmbed;
 use serde_json::json;
-use sled::Db;
 
 use crate::{dbman, utils};
 
@@ -31,7 +31,7 @@ fn upload() -> content::RawHtml<String> {
 }
 
 #[get("/?<file>")]
-fn file(file: String, db: &State<Db>) -> content::RawHtml<String> {
+fn file(file: String, db: &State<DB>) -> content::RawHtml<String> {
     let uid = file;
     let info = dbman::read_file_info(uid.clone(), db);
     content::RawHtml(

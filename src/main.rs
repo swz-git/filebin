@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate rocket;
-use std::env;
 
 extern crate mime_sniffer;
 
@@ -12,6 +11,7 @@ use rocket::{
     data::{ByteUnit, Limits, ToByteUnit},
     Config,
 };
+use rocksdb::{Options, DB};
 use serde::{Deserialize, Serialize};
 
 // TODO: Memory leak? upload file + ddosify get file = memory go brrrrrr
@@ -59,6 +59,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
 struct AppConfig {
     file_size_limit: ByteUnit,
     allowed_preview_mime_regex: String,
+    db_path: String,
 }
 
 impl Default for AppConfig {
@@ -67,6 +68,7 @@ impl Default for AppConfig {
             file_size_limit: 1.gibibytes(),
             allowed_preview_mime_regex:
                 r"^((audio|image|video)/[a-z.+-]+|(application/json|text/plain))$".to_string(),
+            db_path: "./trunk_db".to_string(),
         }
     }
 }
@@ -81,10 +83,10 @@ fn rocket() -> _ {
 
     let config: AppConfig = figment.extract().expect("Couldn't initialize config");
 
-    log::debug!("AAAA: {}", config.file_size_limit);
+    let mut opts = Options::default();
+    opts.increase_parallelism(12);
 
-    let db = sled::open(env::var("DB_PATH").unwrap_or("./trunk_db".to_string()))
-        .expect("Couldn't open database");
+    let db = DB::open(&opts, &config.db_path).expect("Couldn't open database");
 
     let limits = Limits::new()
         .limit("data-form", config.file_size_limit + 100.kibibytes())
