@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate rocket;
-use std::env;
-
 extern crate mime_sniffer;
 
 use figment::{
@@ -59,6 +57,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
 struct AppConfig {
     file_size_limit: ByteUnit,
     allowed_preview_mime_regex: String,
+    db_path: String,
 }
 
 impl Default for AppConfig {
@@ -67,6 +66,7 @@ impl Default for AppConfig {
             file_size_limit: 1.gibibytes(),
             allowed_preview_mime_regex:
                 r"^((audio|image|video)/[a-z.+-]+|(application/json|text/plain))$".to_string(),
+            db_path: "./trunk_db".to_string(),
         }
     }
 }
@@ -81,9 +81,9 @@ fn rocket() -> _ {
 
     let config: AppConfig = figment.extract().expect("Couldn't initialize config");
 
-    log::debug!("AAAA: {}", config.file_size_limit);
-
-    let db = sled::open(env::var("DB_PATH").unwrap_or("./trunk_db".to_string()))
+    let db = sled::Config::default()
+        .path(&config.db_path)
+        .open()
         .expect("Couldn't open database");
 
     let limits = Limits::new()

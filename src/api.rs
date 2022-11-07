@@ -93,8 +93,7 @@ async fn download(uid: String, db: &State<Db>, config: &State<AppConfig>) -> Opt
 }
 
 #[get("/")]
-fn index(db: &State<Db>) -> &'static str {
-    log::debug!("{:?}", db.get("a").expect("shit"));
+fn index() -> &'static str {
     "API Is live"
 }
 
