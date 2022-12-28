@@ -1,9 +1,3 @@
 {
-  "cSpell.words": [
-    "actix",
-    "bincode",
-    "chrono",
-    "dbman",
-    "nanos"
-  ]
+  "cSpell.words": ["actix", "bincode", "chrono", "dbman", "kibibytes", "nanos"]
 }
