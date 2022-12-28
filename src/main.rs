@@ -108,36 +108,3 @@ async fn main() {
         .await
         .unwrap();
 }
-
-// #[launch]
-// fn rocket() -> _ {
-//     setup_logger().expect("Couldn't initialize logger");
-
-//     let figment = Figment::from(Serialized::defaults(AppConfig::default()))
-//         .merge(Env::prefixed("TRUNK_"))
-//         .merge(Toml::file("trunk.toml"));
-
-//     let config: AppConfig = figment.extract().expect("Couldn't initialize config");
-
-//     let db = sled::Config::default()
-//         .path(&config.db_path)
-//         .open()
-//         .expect("Couldn't open database");
-
-//     let limits = Limits::new()
-//         .limit("data-form", config.file_size_limit + 100.kibibytes())
-//         .limit("file", config.file_size_limit);
-
-//     let port = 8080;
-//     rocket::build()
-//         .configure(Config {
-//             port,
-//             limits,
-//             ..Config::default()
-//         })
-//         .manage(db)
-//         .manage(config)
-//         .mount("/api", api::get_routes())
-//         .mount("/", pages::get_routes())
-//         .mount("/", static_files::get_routes())
-// }
