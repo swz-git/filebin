@@ -1,5 +1,3 @@
-use std::io::Read;
-
 use crate::{
     dbman::{self, FileInfo},
     utils::unique_id,
@@ -22,8 +20,6 @@ use uuid::Uuid;
 // since multipart consumes body, it needs to be last for some reason. introduced in axum 0.6
 async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Response {
     struct FileFieldData {
-        /// multipart field name
-        name: String,
         file_name: String,
         content_type: String,
         bytes: Result<Bytes, MultipartError>,
@@ -35,7 +31,6 @@ async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Resp
             continue;
         }
         maybe_file_field = Some(FileFieldData {
-            name: field.name().expect("couldn't read field name").to_string(),
             file_name: field
                 .file_name()
                 .expect("couldn't read file name")
@@ -74,7 +69,7 @@ async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Resp
 
 async fn download(Path(uid): Path<String>, State(state): State<AppState>) -> Response {
     let maybe_file = dbman::read_file(uid.clone(), &state.db);
-    if maybe_file == None {
+    if maybe_file.is_none() {
         return Response::builder()
             .status(404)
             .body(boxed("404".to_string())) // I have no idea why this needs to be boxed but whatever
@@ -82,8 +77,8 @@ async fn download(Path(uid): Path<String>, State(state): State<AppState>) -> Res
     }
     let file = maybe_file.unwrap();
 
-    let maybe_info = dbman::read_file_info(uid.clone(), &state.db);
-    if maybe_info == None {
+    let maybe_info = dbman::read_file_info(uid, &state.db);
+    if maybe_info.is_none() {
         return Response::builder()
             .status(404)
             .body(boxed("404".to_string())) // I have no idea why this needs to be boxed but whatever

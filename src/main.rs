@@ -96,7 +96,7 @@ async fn main() {
 
     // build our application with a single route
     let app = Router::new()
-        .nest("/", get_pages_router(config.clone()))
+        .nest("/", get_pages_router())
         .nest("/api", get_api_router(config.clone()))
         // .route("/", get(|| async { "Hello, World!" }))
         .fallback(static_handler)
