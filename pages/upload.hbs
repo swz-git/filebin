@@ -27,7 +27,7 @@
       },
       init: function() {
         this.on("success", stuff => {
-          window.location = "/?file=" + stuff.xhr.responseText
+          window.location = "/file/" + stuff.xhr.responseText
         })
         this.on("error", e => {
           console.error(e)

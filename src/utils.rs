@@ -12,7 +12,7 @@ pub fn unique_id() -> String {
         .filter(|&byte| byte != 0u8)
         .collect();
 
-    base64::encode(stripped_bytes)
+    base64::encode_config(stripped_bytes, base64::URL_SAFE).replace("=", "")
 }
 
 /// Given the uid and a reference to the db, get the link used to download a file.

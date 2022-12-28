@@ -1,84 +1,104 @@
-use std::{env, fs};
-
-use mime_sniffer::MimeTypeSniffer;
-use regex::Regex;
-use rocket::{form, fs::TempFile, http::Header, Route, State};
-use sled::Db;
-use uuid::Uuid;
+use std::io::Read;
 
 use crate::{
     dbman::{self, FileInfo},
     utils::unique_id,
-    AppConfig,
+    AppConfig, AppState,
 };
+use axum::{
+    body::{boxed, Bytes},
+    extract::{multipart::MultipartError, DefaultBodyLimit, Multipart, Path, State},
+    http::header,
+    response::{IntoResponse, Response},
+    routing::{get, post},
+    Router,
+};
+use http_body::Full;
+use regex::Regex;
+use uuid::Uuid;
 
 // TODO: rate limit, maybe based on ip? accounts (probably not)? api keys?
 
-/// Find mime from file/contents, try and get the mime type in this order; browser, sniffer, file extension
-fn find_mime_from_file(file: &TempFile, file_bin: &Vec<u8>) -> Option<String> {
-    let browser_mime = file.content_type();
-    if browser_mime.is_some() {
-        return Some(browser_mime.unwrap().to_string());
+// since multipart consumes body, it needs to be last for some reason. introduced in axum 0.6
+async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Response {
+    struct FileFieldData {
+        /// multipart field name
+        name: String,
+        file_name: String,
+        content_type: String,
+        bytes: Result<Bytes, MultipartError>,
     }
 
-    let sniffer_mime = file_bin.sniff_mime_type();
-    if sniffer_mime.is_some() {
-        return Some(sniffer_mime.unwrap().to_string());
+    let mut maybe_file_field: Option<FileFieldData> = None;
+    while let Some(field) = multipart.next_field().await.unwrap() {
+        if field.name() != Some("file") {
+            continue;
+        }
+        maybe_file_field = Some(FileFieldData {
+            name: field.name().expect("couldn't read field name").to_string(),
+            file_name: field
+                .file_name()
+                .expect("couldn't read file name")
+                .to_string(),
+            content_type: field
+                .content_type()
+                .expect("couldn't read content type")
+                .to_string(),
+            bytes: field.bytes().await,
+        })
     }
 
-    None
-}
+    let file_field = maybe_file_field.expect("Couldn't read file from multipart");
 
-#[post("/file", data = "<file>")]
-async fn upload(mut file: form::Form<TempFile<'_>>, db: &State<Db>) -> String {
     let uid = unique_id();
-    let file_path = env::temp_dir().join(uid.clone() + ".UNSAFE.file");
-    file.persist_to(&file_path)
-        .await
-        .expect("Failed to create temporary file");
-    let file_bin = fs::read(&file_path).expect("Couldn't read file");
-    let cleanup_result = fs::remove_file(file_path); // try to clean up before potential error
-
-    let mime_type = find_mime_from_file(&file, &file_bin).unwrap_or("text/plain".to_string());
 
     dbman::store_file(
-        file_bin,
+        file_field
+            .bytes
+            .expect("Couldn't read bytes of file")
+            .try_into()
+            .unwrap(),
         &FileInfo {
-            mime_type,
+            mime_type: file_field.content_type,
             upload_date: chrono::offset::Utc::now(),
             deletion_key: Uuid::new_v4().to_string(),
             id: uid.clone(),
-            name: file.name().unwrap_or("unknown").to_string(), // TODO: file extension disappears?
+            name: file_field.file_name,
         },
-        db,
-    );
+        &state.db,
+    )
+    .expect("failed to store file");
 
-    cleanup_result.expect("Couldn't clean up temporary file");
-
-    uid
+    IntoResponse::into_response(boxed(uid))
 }
 
-#[derive(Responder)]
-struct FileResponder {
-    data: Vec<u8>,
-    content_type: Header<'static>, // TODO: array of headers would be cleaner
-    content_disposition: Header<'static>,
-}
+async fn download(Path(uid): Path<String>, State(state): State<AppState>) -> Response {
+    let maybe_file = dbman::read_file(uid.clone(), &state.db);
+    if maybe_file == None {
+        return Response::builder()
+            .status(404)
+            .body(boxed("404".to_string())) // I have no idea why this needs to be boxed but whatever
+            .unwrap();
+    }
+    let file = maybe_file.unwrap();
 
-#[get("/file/<uid>")]
-async fn download(uid: String, db: &State<Db>, config: &State<AppConfig>) -> Option<FileResponder> {
-    let info = dbman::read_file_info(uid.clone(), db);
-    let contents = dbman::read_file(uid, db);
+    let maybe_info = dbman::read_file_info(uid.clone(), &state.db);
+    if maybe_info == None {
+        return Response::builder()
+            .status(404)
+            .body(boxed("404".to_string())) // I have no idea why this needs to be boxed but whatever
+            .unwrap();
+    }
+    let info = maybe_info.unwrap();
 
-    let display_filter = Regex::new(&config.allowed_preview_mime_regex).unwrap();
+    let display_filter = Regex::new(&state.config.allowed_preview_mime_regex).unwrap();
 
     let should_preview = display_filter.is_match(&info.mime_type);
 
-    Some(FileResponder {
-        data: contents,
-        content_type: Header::new("Content-Type", info.mime_type),
-        content_disposition: Header::new(
-            "Content-Disposition",
+    Response::builder()
+        .header(header::CONTENT_TYPE, info.mime_type)
+        .header(
+            header::CONTENT_DISPOSITION,
             format!(
                 "{}; filename=\"{}\"",
                 if should_preview {
@@ -86,17 +106,22 @@ async fn download(uid: String, db: &State<Db>, config: &State<AppConfig>) -> Opt
                 } else {
                     "attachment"
                 },
-                info.name // TODO: Extension? Filter so it won't be able to escape the ""s if that matters?
+                info.name // TODO: Filter so it won't be able to escape the ""s if that matters?
             ),
-        ),
-    })
+        )
+        .body(boxed(Full::from(file)))
+        .unwrap()
 }
 
-#[get("/")]
-fn index() -> &'static str {
-    "API Is live"
+async fn index() -> Response {
+    IntoResponse::into_response("API Is live")
 }
 
-pub fn get_routes() -> Vec<Route> {
-    routes![index, upload, download]
+pub fn get_api_router(config: AppConfig) -> Router<AppState> {
+    Router::new()
+        .route("/", get(index))
+        .route("/file", post(upload))
+        .route("/file/:file", get(download))
+        .layer(DefaultBodyLimit::max(config.file_size_limit * 1000 + 1000))
+    // .route("/file", post(upload))
 }

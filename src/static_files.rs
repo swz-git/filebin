@@ -1,36 +1,38 @@
-use rocket::{http::ContentType, Route};
+use axum::{
+    body::{boxed, Full},
+    http::{header, StatusCode, Uri},
+    response::Response,
+};
 use rust_embed::RustEmbed;
-use std::borrow::Cow;
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
 
 #[derive(RustEmbed)]
-#[folder = "static"]
-struct Asset;
+#[folder = "static/"]
+struct Assets;
 
-#[get("/<file..>")]
-fn dist(file: PathBuf) -> Option<(ContentType, Cow<'static, [u8]>)> {
-    let mut filename = file.display().to_string();
-    log::debug!("{}", filename);
-    let mut maybe_asset = Asset::get(&filename);
-    if maybe_asset.is_none() {
-        if filename.is_empty() {
-            filename += "index.html";
-        } else {
-            filename += "/index.html";
+// got most of this from https://github.com/frehberg/rust-vue-demo/blob/main/src/main.rs
+
+pub async fn static_handler(uri: Uri) -> Response {
+    let path = uri.path().trim_start_matches('/');
+
+    match Assets::get(&("".to_string() + path)) {
+        Some(content) => {
+            let body = boxed(Full::from(content.data));
+            let mime = mime_guess::from_path(path).first_or_octet_stream();
+
+            Response::builder()
+                .header(header::CONTENT_TYPE, mime.as_ref())
+                .body(body)
+                .unwrap()
         }
-        maybe_asset = Asset::get(&filename);
+        None => {
+            return not_found().await;
+        }
     }
-    let asset = maybe_asset?;
-    let content_type = Path::new(&filename)
-        .extension()
-        .and_then(OsStr::to_str)
-        .and_then(ContentType::from_extension)
-        .unwrap_or(ContentType::Bytes);
-
-    Some((content_type, asset.data))
 }
 
-pub fn get_routes() -> Vec<Route> {
-    routes![dist]
+async fn not_found() -> Response {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(boxed(Full::from("404")))
+        .unwrap()
 }
