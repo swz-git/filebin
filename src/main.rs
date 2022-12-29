@@ -1,5 +1,3 @@
-extern crate mime_sniffer;
-
 use api::get_api_router;
 use axum::Router;
 use figment::{
