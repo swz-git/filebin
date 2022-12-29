@@ -1,9 +1,16 @@
-use std::error::Error;
+use std::{error::Error, io::Write, pin::Pin};
 
-use bincode::{serde::decode_from_slice, Decode, Encode};
+use async_compression::tokio::{bufread::BrotliDecoder, write::BrotliEncoder};
+use bincode::{de::read::Reader, serde::decode_from_slice, Decode, Encode};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sled::Db;
+use tokio::{
+    fs::File,
+    io::{AsyncBufRead, AsyncReadExt, AsyncWriteExt, BufReader, BufStream, ReadBuf},
+};
+
+use crate::AppState;
 
 /*
 # Custom database using sled
@@ -36,17 +43,6 @@ pub struct FileInfo {
 
 const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
 
-pub fn store_file(file: Vec<u8>, file_info: &FileInfo, db: &Db) -> Result<(), Box<dyn Error>> {
-    let encoded_file_info = bincode::encode_to_vec(file_info, BINCODE_CONFIG)?;
-    db.insert(format!("filebin:storage:{}", file_info.id), file)?;
-    db.insert(
-        format!("filebin:metadata:{}", file_info.id),
-        encoded_file_info,
-    )?;
-    log::debug!("Write file {}", file_info.id);
-    Ok(())
-}
-
 pub fn read_file_info(id: String, db: &Db) -> Option<FileInfo> {
     let encoded_file_info: &[u8] = &db.get(format!("filebin:metadata:{}", id)).ok()??;
     let file_info: FileInfo = decode_from_slice(encoded_file_info, BINCODE_CONFIG).ok()?.0;
@@ -54,10 +50,58 @@ pub fn read_file_info(id: String, db: &Db) -> Option<FileInfo> {
     Some(file_info)
 }
 
-pub fn read_file(id: String, db: &Db) -> Option<Vec<u8>> {
-    let x = db.get(format!("filebin:storage:{}", id)).ok()??.to_vec();
-    log::debug!("Read file {}", id);
-    Some(x)
+// TODO: maybe make this buf (stream) for perf, if possible
+pub async fn store_file(
+    file: Vec<u8>,
+    file_info: &FileInfo,
+    state: &AppState,
+) -> Result<(), Box<dyn Error>> {
+    let encoded_file_info = bincode::encode_to_vec(file_info, BINCODE_CONFIG)?;
+
+    // write file to DB_PATH/blob/id.br using brotli compression
+    {
+        let target_file_path = state
+            .priv_config
+            .blob_path
+            .join(format!("{}.br", file_info.id));
+
+        let target_file = File::create(target_file_path).await?;
+        let mut writer = BrotliEncoder::with_quality(
+            tokio::io::BufWriter::new(target_file),
+            async_compression::Level::Fastest,
+        );
+        writer.write_all(&file).await?;
+        writer.shutdown().await?;
+    }
+
+    // db.insert(format!("filebin:storage:{}", file_info.id), file)?;
+    state.db.insert(
+        format!("filebin:metadata:{}", file_info.id),
+        encoded_file_info,
+    )?;
+    log::debug!("Write file {}", file_info.id);
+    Ok(())
+}
+
+pub async fn decode(
+    encoded: BufReader<File>,
+) -> Result<
+    BufReader<async_compression::tokio::bufread::BrotliDecoder<BufStream<BufReader<File>>>>,
+    Box<dyn Error>,
+> {
+    todo!("read and decode brotli");
+    let mut reader = BufStream::new(encoded);
+    let mut decoder = BrotliDecoder::new(reader);
+    Ok(BufReader::new(decoder))
+}
+
+pub async fn read_file(id: String, state: &AppState) -> Option<BufReader<File>> {
+    let brotli_blob_file_path = state.priv_config.blob_path.join(format!("{}.br", id));
+
+    let brotli_blob_file = File::open(brotli_blob_file_path).await.ok()?;
+    let buffer = BufReader::new(brotli_blob_file);
+
+    Some(buffer)
 }
 
 // TODO: delete file function
