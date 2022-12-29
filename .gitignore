@@ -1,4 +1,5 @@
 /target
 output.log
-trunk.log
-trunk_db
+filebin.log
+filebin_db
+filebin.toml

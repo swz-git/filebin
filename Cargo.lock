@@ -321,6 +321,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "filebin"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64",
+ "bincode",
+ "chrono",
+ "config",
+ "fern",
+ "figment",
+ "handlebars",
+ "http-body",
+ "log",
+ "mime",
+ "mime_guess",
+ "regex",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "sled",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1400,31 +1425,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aeea4303076558a00714b823f9ad67d58a3bbda1df83d8827d21193156e22f7"
 dependencies = [
  "once_cell",
-]
-
-[[package]]
-name = "trunk"
-version = "0.1.0"
-dependencies = [
- "axum",
- "base64",
- "bincode",
- "chrono",
- "config",
- "fern",
- "figment",
- "handlebars",
- "http-body",
- "log",
- "mime",
- "mime_guess",
- "regex",
- "rust-embed",
- "serde",
- "serde_json",
- "sled",
- "tokio",
- "uuid",
 ]
 
 [[package]]

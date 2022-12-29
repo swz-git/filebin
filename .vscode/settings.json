@@ -3,6 +3,7 @@
     "bincode",
     "chrono",
     "dbman",
+    "filebin",
     "Filesize",
     "nanos"
   ]

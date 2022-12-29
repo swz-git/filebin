@@ -40,7 +40,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
         })
         .level(log_level)
         .chain(std::io::stdout())
-        .chain(fern::log_file("trunk.log")?)
+        .chain(fern::log_file("filebin.log")?)
         .apply()?;
     Ok(())
 }
@@ -48,19 +48,23 @@ fn setup_logger() -> Result<(), fern::InitError> {
 // TODO: add sled cache capacity to config
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct AppConfig {
-    file_size_limit: usize, // in kb
+    /// in kb
+    file_size_limit: usize,
     allowed_preview_mime_regex: String,
     db_path: String,
+    /// in kb
+    sled_cache_cap: usize,
     port: u16,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
-            file_size_limit: 1000000, // 1000000KB == 1GB
+            file_size_limit: 1_000_000, // 1000000KB == 1GB
             allowed_preview_mime_regex:
                 r"^((audio|image|video)/[a-z.+-]+|(application/json|text/plain))$".to_string(),
-            db_path: "./trunk_db".to_string(),
+            db_path: "./filebin_db".to_string(),
+            sled_cache_cap: 500_000, // 500_000KB = .5GB
             port: 8080,
         }
     }
@@ -77,13 +81,14 @@ async fn main() {
     setup_logger().expect("Couldn't initialize logger");
 
     let figment = Figment::from(Serialized::defaults(AppConfig::default()))
-        .merge(Env::prefixed("TRUNK_"))
-        .merge(Toml::file("trunk.toml"));
+        .merge(Env::prefixed("FILEBIN_"))
+        .merge(Toml::file("filebin.toml"));
 
     let config: AppConfig = figment.extract().expect("Couldn't initialize config");
 
     let db = sled::Config::default()
         .path(&config.db_path)
+        .cache_capacity((config.sled_cache_cap * 1000) as u64)
         .open()
         .expect("Couldn't open database");
 

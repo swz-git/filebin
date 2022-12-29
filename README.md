@@ -1,4 +1,4 @@
-# trunk
+# filebin
 Self hosted file upload tool
 
 ## Goals
