@@ -5,9 +5,13 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Bootstrap gives us some nice components to work with -->
+  <script src="/lib/bootstrap/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="/lib/bootstrap/bootstrap.min.css">
+
   <!-- Dropzone makes file drop areas much easier and cleaner looking -->
   <script src="/lib/dropzone/dropzone-min.js"></script>
-  <link href="/lib/dropzone/dropzone.css" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="/lib/dropzone/dropzone.css">
 
   <link rel="stylesheet" href="/common.css">
   <title>filebin - upload a file</title>
@@ -15,8 +19,26 @@
 <body>
   <h1 class="title">filebin</h1>
 
-  <div class="dropzone" id="my-dropzone"></div>
+  <div class="dropzone mb-3" id="my-dropzone"></div>
+
+  <p class="mb-3">Upload limit per day is 5gb</p>
+
+  <div id="links">
+
+  </div>
+
+  <div id="copied-toast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">
+        Copied!
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+
   <script>
+    let links = []
+
     let dropzone = new Dropzone("div#my-dropzone", {
       url: "/api/file",
       paramName: "file", // The name that will be used to transfer the file
@@ -27,7 +49,11 @@
       },
       init: function() {
         this.on("success", stuff => {
-          window.location = "/file/" + stuff.xhr.responseText
+          let parsed = JSON.parse(stuff.xhr.responseText)
+          console.log(parsed)
+          links.push(window.location + "file/" +parsed.id)
+          render_links(links, document.getElementById("links"))
+          // window.location = "/file/" + stuff.xhr.responseText
         })
         this.on("error", e => {
           console.error(e)
@@ -36,13 +62,52 @@
         })
       }
     })
+
+    const safetext = (text) => {
+      let el = document.createElement('div')
+      el.textContent = text;
+      return el.innerHTML;
+    };
+
+    function render_links(links, el){
+      let template = (link) => `
+
+      <div class="input-group mb-3">
+        <input disabled type="text" class="form-control" placeholder="loading..." value="${safetext(link)}" aria-label="link" aria-describedby="basic-addon1">
+        <button onclick="clicked(this)" class="input-group-text" id="basic-addon1"><img src="/icons/copy.svg"></button>
+      </div>
+      `
+
+      el.innerHTML = "";
+      for (let link of links) {
+        console.log(link)
+        el.innerHTML += template(link)
+      }
+    }
+
+    const copiedToast = document.getElementById('copied-toast')
+
+    function clicked(el){
+      let link = el.parentElement.children[0].value
+      console.log(link)
+      navigator.clipboard.writeText(link);
+
+      const toast = new bootstrap.Toast(copiedToast)
+      toast.show()
+    }
   </script>
   <style>
     #my-dropzone {
-      height: 70%;
-      width: 80%;
-      margin: auto;
+      min-height: 20%;
+      width: 100%;
     }
+
+    #copied-toast {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+    }
+
     .dz-default {
       height: 100%;
       margin: 0 !important;

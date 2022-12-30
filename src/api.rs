@@ -15,7 +15,9 @@ use axum::{
     Router,
 };
 use axum_extra::body::AsyncReadBody;
+use http_body::Full;
 use regex::Regex;
+use serde_json::json;
 use tokio::{
     fs::File,
     io::{BufReader, BufStream},
@@ -54,25 +56,29 @@ async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Resp
 
     let uid = unique_id();
 
+    let file_info = FileInfo {
+        mime_type: file_field.content_type,
+        upload_date: chrono::offset::Utc::now(),
+        deletion_key: Uuid::new_v4().to_string(),
+        id: uid.clone(),
+        name: file_field.file_name,
+    };
+
     dbman::store_file(
         file_field
             .bytes
             .expect("Couldn't read bytes of file")
             .try_into()
             .unwrap(),
-        &FileInfo {
-            mime_type: file_field.content_type,
-            upload_date: chrono::offset::Utc::now(),
-            deletion_key: Uuid::new_v4().to_string(),
-            id: uid.clone(),
-            name: file_field.file_name,
-        },
+        &file_info,
         &state,
     )
     .await
     .expect("failed to store file");
 
-    IntoResponse::into_response(boxed(uid))
+    IntoResponse::into_response(boxed(
+        serde_json::to_string(&file_info).expect("failed to convert file data to json"),
+    ))
 }
 
 enum Either<L, R> {
