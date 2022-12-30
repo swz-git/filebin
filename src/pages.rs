@@ -34,8 +34,15 @@ fn render_file(filename: &str, json: &serde_json::Value) -> Result<String, Box<d
     Ok(reg.render_template(file_str, json)?)
 }
 
-async fn upload() -> Response {
-    let body = render_file("upload.hbs", &json!({})).expect("rendering failed");
+async fn upload(State(state): State<AppState>) -> Response {
+    let body = render_file(
+        "upload.hbs",
+        &json!({
+            "maxFilesize": (&state.config.file_size_limit).get_bytes() as u64,
+            "maxFilesizeReadable": state.config.file_size_limit.get_appropriate_unit(true).to_string().replace(".00", "")
+        }),
+    )
+    .expect("rendering failed");
 
     Response::builder()
         .header(header::CONTENT_TYPE, "text/html")

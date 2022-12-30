@@ -114,7 +114,9 @@ async fn download(
 
     if !use_brotli {
         maybe_file = Some(Either::Right(AsyncReadBody::new(
-            dbman::decode(file_buf_reader).await.expect("sheise"),
+            dbman::decode(file_buf_reader)
+                .await
+                .expect("couldn't decode brotli stream"),
         )));
     } else {
         maybe_file = Some(Either::Left(AsyncReadBody::new(file_buf_reader)));
@@ -168,6 +170,8 @@ pub fn get_api_router(config: AppConfig) -> Router<AppState> {
         .route("/", get(index))
         .route("/file", post(upload))
         .route("/file/:file", get(download)) // TODO: Cache system caching files under 10mb or similar
-        .layer(DefaultBodyLimit::max(config.file_size_limit * 1000 + 1000))
+        .layer(DefaultBodyLimit::max(
+            (config.file_size_limit.get_bytes() + 1024) as usize,
+        ))
     // .route("/file", post(upload))
 }

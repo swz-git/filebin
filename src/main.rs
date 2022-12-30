@@ -5,6 +5,7 @@ use std::{
 
 use api::get_api_router;
 use axum::{response::Redirect, routing::get, Router};
+use byte_unit::{n_gb_bytes, n_gib_bytes, n_mb_bytes, n_mib_bytes};
 use figment::{
     providers::{Env, Format, Serialized, Toml},
     Figment,
@@ -53,23 +54,21 @@ fn setup_logger() -> Result<(), fern::InitError> {
 // TODO: add sled cache capacity to config
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct AppConfig {
-    /// in kb
-    file_size_limit: usize,
+    file_size_limit: byte_unit::Byte,
     allowed_preview_mime_regex: String,
     db_path: PathBuf,
-    /// in kb
-    sled_cache_cap: usize,
+    sled_cache_cap: byte_unit::Byte,
     port: u16,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
-            file_size_limit: 1_000_000, // 1000000KB == 1GB
+            file_size_limit: byte_unit::Byte::from_str("1 GiB").unwrap(), // 1000000KB == 1GB
             allowed_preview_mime_regex:
                 r"^((audio|image|video)/[a-z.+-]+|(application/json|text/plain))$".to_string(),
             db_path: Path::new("./filebin_db").to_path_buf(),
-            sled_cache_cap: 500_000, // 500_000KB = .5GB
+            sled_cache_cap: byte_unit::Byte::from_str("0.5 GiB").unwrap(), // 500_000KB = .5GB
             port: 8080,
         }
     }
@@ -111,7 +110,7 @@ async fn main() {
 
     let db = sled::Config::default()
         .path(&priv_config.sled_path)
-        .cache_capacity((config.sled_cache_cap * 1000) as u64)
+        .cache_capacity(config.sled_cache_cap.get_bytes() as u64)
         .open()
         .expect("Couldn't open database");
 
