@@ -39,6 +39,9 @@ pub struct FileInfo {
 
     /// Actual file name
     pub name: String,
+
+    // Size of the file in bytes
+    pub size: usize,
 }
 
 const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
@@ -94,13 +97,20 @@ pub async fn decode(
     Ok(BufReader::new(decoder))
 }
 
-pub async fn read_file(id: String, state: &AppState) -> Option<BufReader<File>> {
+pub async fn read_file(id: String, state: &AppState) -> Option<(BufReader<File>, u64)> {
     let brotli_blob_file_path = state.priv_config.blob_path.join(format!("{}.br", id));
 
     let brotli_blob_file = File::open(brotli_blob_file_path).await.ok()?;
+
+    let length = brotli_blob_file
+        .metadata()
+        .await
+        .expect("Couldn't read file metadata")
+        .len();
+
     let buffer = BufReader::new(brotli_blob_file);
 
-    Some(buffer)
+    Some((buffer, length))
 }
 
 // TODO: delete file function

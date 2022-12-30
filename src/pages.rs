@@ -12,7 +12,11 @@ use handlebars::Handlebars;
 use rust_embed::RustEmbed;
 use serde_json::json;
 
-use crate::{dbman, utils, AppState};
+use crate::{
+    dbman,
+    utils::{self, should_preview},
+    AppState,
+};
 
 #[derive(RustEmbed)]
 #[folder = "pages/"]
@@ -50,12 +54,15 @@ async fn file(Path(file): Path<String>, State(state): State<AppState>) -> Respon
     }
     let info = maybe_info.unwrap();
 
+    let should_preview = should_preview(&info.mime_type, &state.config);
+
     let body = render_file(
         "file.hbs",
         &json!({
             "id": info.id,
             "filename": info.name,
-            "img": utils::get_download_link(uid)
+            "img": utils::get_download_link(uid),
+            "shouldPreview": should_preview,
         }),
     )
     .expect("rendering failed");

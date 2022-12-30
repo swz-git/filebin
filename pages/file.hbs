@@ -14,9 +14,19 @@
 </head>
 <body>
   <h1 class="title"><a href="/" style="color:black">filebin</a> - {{ filename }}</h1>
-  <div class="imgContainer">
-    <iframe src="{{ img }}" alt="{{ filename }}" srcset=""></iframe>
+
+  <div class="buttons">
+    {{#if shouldPreview}}
+    <a href="{{ img }}"><button type="button" class="btn btn-primary">Preview</button></a>
+    {{/if}}
+
+    <a href="{{ img }}" download><button type="button" class="btn btn-primary">Download</button></a>
   </div>
+
+  {{#if shouldPreview}}
+  <iframe src="{{ img }}"></iframe>
+  {{/if}}
+
   <style>
     .imgContainer {
       height: 70%;
@@ -26,11 +36,16 @@
       align-items: center;
       justify-content: center;
     }
+
+    .buttons {
+      margin: 1rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
     iframe {
       height: 100%;
-      width: 100%;
-      border: none;
-      object-fit: scale-down;
+      border: solid 1px gray;
     }
   </style>
 </body>

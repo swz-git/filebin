@@ -1,6 +1,6 @@
 use crate::{
     dbman::{self, FileInfo},
-    utils::unique_id,
+    utils::{should_preview, unique_id},
     AppConfig, AppState,
 };
 use axum::{
@@ -29,7 +29,7 @@ async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Resp
     struct FileFieldData {
         file_name: String,
         content_type: String,
-        bytes: Result<Bytes, MultipartError>,
+        bytes: Bytes,
     }
 
     let mut maybe_file_field: Option<FileFieldData> = None;
@@ -46,7 +46,7 @@ async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Resp
                 .content_type()
                 .expect("couldn't read content type")
                 .to_string(),
-            bytes: field.bytes().await,
+            bytes: field.bytes().await.expect("Couldn't read bytes of file"),
         })
     }
 
@@ -60,19 +60,12 @@ async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Resp
         deletion_key: Uuid::new_v4().to_string(),
         id: uid.clone(),
         name: file_field.file_name,
+        size: file_field.bytes.len(),
     };
 
-    dbman::store_file(
-        file_field
-            .bytes
-            .expect("Couldn't read bytes of file")
-            .try_into()
-            .unwrap(),
-        &file_info,
-        &state,
-    )
-    .await
-    .expect("failed to store file");
+    dbman::store_file(file_field.bytes.try_into().unwrap(), &file_info, &state)
+        .await
+        .expect("failed to store file");
 
     IntoResponse::into_response(boxed(
         serde_json::to_string(&file_info).expect("failed to convert file data to json"),
@@ -105,7 +98,7 @@ async fn download(
             .body(boxed("404".to_string())) // I have no idea why this needs to be boxed but whatever
             .unwrap();
     }
-    let file_buf_reader = maybe_file.unwrap();
+    let (file_buf_reader, brotli_length) = maybe_file.unwrap();
     let maybe_file: Option<
         Either<
             AsyncReadBody<BufReader<File>>,
@@ -138,9 +131,7 @@ async fn download(
     }
     let info = maybe_info.unwrap();
 
-    let display_filter = Regex::new(&state.config.allowed_preview_mime_regex).unwrap();
-
-    let should_preview = display_filter.is_match(&info.mime_type);
+    let should_preview = should_preview(&info.mime_type, &state.config);
 
     let mut builder = Response::builder()
         .header(header::CONTENT_TYPE, info.mime_type)
@@ -157,7 +148,10 @@ async fn download(
             ),
         );
     if use_brotli {
-        builder = builder.header(header::CONTENT_ENCODING, "br")
+        builder = builder.header(header::CONTENT_ENCODING, "br");
+        builder = builder.header(header::CONTENT_LENGTH, brotli_length);
+    } else {
+        builder = builder.header(header::CONTENT_LENGTH, info.size)
     }
     match file {
         Either::Left(x) => builder.body(x).unwrap().into_response(),
