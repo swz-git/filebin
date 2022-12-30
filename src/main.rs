@@ -4,7 +4,7 @@ use std::{
 };
 
 use api::get_api_router;
-use axum::Router;
+use axum::{response::Redirect, routing::get, Router};
 use figment::{
     providers::{Env, Format, Serialized, Toml},
     Figment,
@@ -127,7 +127,10 @@ async fn main() {
     let app = Router::new()
         .nest("/", get_pages_router())
         .nest("/api", get_api_router(config.clone()))
-        // .route("/", get(|| async { "Hello, World!" }))
+        .route(
+            "/favicon.ico",
+            get(|| async { Redirect::permanent("/favicon.svg") }),
+        )
         .fallback(static_handler)
         .with_state(app_state);
 

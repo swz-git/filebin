@@ -1,13 +1,13 @@
-use std::{error::Error, io::Write, pin::Pin};
+use std::error::Error;
 
 use async_compression::tokio::{bufread::BrotliDecoder, write::BrotliEncoder};
-use bincode::{de::read::Reader, serde::decode_from_slice, Decode, Encode};
+use bincode::{serde::decode_from_slice, Decode, Encode};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sled::Db;
 use tokio::{
     fs::File,
-    io::{AsyncBufRead, AsyncReadExt, AsyncWriteExt, BufReader, BufStream, ReadBuf},
+    io::{AsyncWriteExt, BufReader, BufStream},
 };
 
 use crate::AppState;
@@ -89,9 +89,8 @@ pub async fn decode(
     BufReader<async_compression::tokio::bufread::BrotliDecoder<BufStream<BufReader<File>>>>,
     Box<dyn Error>,
 > {
-    todo!("read and decode brotli");
-    let mut reader = BufStream::new(encoded);
-    let mut decoder = BrotliDecoder::new(reader);
+    let reader = BufStream::new(encoded);
+    let decoder = BrotliDecoder::new(reader);
     Ok(BufReader::new(decoder))
 }
 

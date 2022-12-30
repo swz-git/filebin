@@ -4,22 +4,21 @@ use crate::{
     AppConfig, AppState,
 };
 use axum::{
-    body::{boxed, Bytes, StreamBody},
+    body::{boxed, Bytes},
     extract::{multipart::MultipartError, DefaultBodyLimit, Multipart, Path, State},
     http::{
-        header::{self, ToStrError},
-        HeaderMap, HeaderValue,
+        header::{self},
+        HeaderMap,
     },
     response::{IntoResponse, Response},
     routing::{get, post},
     Router,
 };
 use axum_extra::body::AsyncReadBody;
-use http_body::Full;
 use regex::Regex;
 use tokio::{
     fs::File,
-    io::{AsyncReadExt, BufReader, BufStream},
+    io::{BufReader, BufStream},
 };
 use uuid::Uuid;
 
@@ -103,22 +102,28 @@ async fn download(
             .unwrap();
     }
     let file_buf_reader = maybe_file.unwrap();
-    let file: Either<
-        AsyncReadBody<BufReader<File>>,
-        AsyncReadBody<
-            tokio::io::BufReader<
-                async_compression::tokio::bufread::BrotliDecoder<
-                    BufStream<tokio::io::BufReader<tokio::fs::File>>,
+    let maybe_file: Option<
+        Either<
+            AsyncReadBody<BufReader<File>>,
+            AsyncReadBody<
+                tokio::io::BufReader<
+                    async_compression::tokio::bufread::BrotliDecoder<
+                        BufStream<tokio::io::BufReader<tokio::fs::File>>,
+                    >,
                 >,
             >,
         >,
-    > = Either::Left(AsyncReadBody::new(file_buf_reader));
+    >;
 
-    if use_brotli {
-        file = Either::Right(AsyncReadBody::new(
+    if !use_brotli {
+        maybe_file = Some(Either::Right(AsyncReadBody::new(
             dbman::decode(file_buf_reader).await.expect("sheise"),
-        ));
+        )));
+    } else {
+        maybe_file = Some(Either::Left(AsyncReadBody::new(file_buf_reader)));
     }
+
+    let file = maybe_file.unwrap();
 
     let maybe_info = dbman::read_file_info(uid, &state.db);
     if maybe_info.is_none() {
@@ -151,8 +156,8 @@ async fn download(
         builder = builder.header(header::CONTENT_ENCODING, "br")
     }
     match file {
-        Either::Left(x) => builder.body(AsyncReadBody::new(x)).unwrap().into_response(),
-        Either::Right(x) => builder.body(AsyncReadBody::new(x)).unwrap().into_response(),
+        Either::Left(x) => builder.body(x).unwrap().into_response(),
+        Either::Right(x) => builder.body(x).unwrap().into_response(),
     }
 }
 
