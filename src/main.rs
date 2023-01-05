@@ -9,6 +9,7 @@ use figment::{
     providers::{Env, Format, Serialized, Toml},
     Figment,
 };
+use owo_colors::OwoColorize;
 use pages::get_pages_router;
 use serde::{Deserialize, Serialize};
 use sled::Db;
@@ -36,10 +37,16 @@ fn setup_logger() -> Result<(), fern::InitError> {
     fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
-                record.target(),
-                record.level(),
+                "{} {} [{}] {}",
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                record.target().dimmed(),
+                match record.level() {
+                    log::Level::Debug => log::Level::Debug.to_string().dimmed().to_string(),
+                    log::Level::Error => log::Level::Error.to_string().red().on_black().to_string(),
+                    log::Level::Info => log::Level::Info.to_string().bright_blue().to_string(),
+                    log::Level::Trace => log::Level::Trace.to_string(),
+                    log::Level::Warn => log::Level::Warn.to_string().yellow().to_string(),
+                },
                 message
             ))
         })

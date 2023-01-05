@@ -82,7 +82,7 @@ pub async fn store_file(
         format!("filebin:metadata:{}", file_info.id),
         encoded_file_info,
     )?;
-    log::debug!("Write file {}", file_info.id);
+    log::debug!("Wrote file {}", file_info.id);
     Ok(())
 }
 
@@ -94,6 +94,7 @@ pub async fn decode(
 > {
     let reader = BufStream::new(encoded);
     let decoder = BrotliDecoder::new(reader);
+    log::debug!("Decoding brotli stream");
     Ok(BufReader::new(decoder))
 }
 
@@ -109,6 +110,8 @@ pub async fn read_file(id: String, state: &AppState) -> Option<(BufReader<File>,
         .len();
 
     let buffer = BufReader::new(brotli_blob_file);
+
+    log::debug!("Read file {}", id);
 
     Some((buffer, length))
 }

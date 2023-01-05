@@ -66,6 +66,8 @@ async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Resp
         .await
         .expect("failed to store file");
 
+    log::info!("Uploaded {} to database", file_info.id);
+
     IntoResponse::into_response(boxed(
         serde_json::to_string(&file_info).expect("failed to convert file data to json"),
     ))
@@ -82,7 +84,6 @@ async fn download(
     headers: HeaderMap,
 ) -> Response /*<tokio::io::BufReader<tokio::fs::File>>*/ {
     let accept_encoding = headers.get("Accept-Encoding");
-    log::debug!("{:?}", accept_encoding.unwrap());
     let use_brotli = match accept_encoding {
         None => false,
         Some(header) => match header.to_str() {
@@ -154,6 +155,15 @@ async fn download(
     } else {
         builder = builder.header(header::CONTENT_LENGTH, info.size)
     }
+    log::info!(
+        "Streaming {} to client{}",
+        info.id,
+        if !use_brotli {
+            " using brotli decode stream"
+        } else {
+            ""
+        }
+    );
     match file {
         Either::Left(x) => builder.body(x).unwrap().into_response(),
         Either::Right(x) => builder.body(x).unwrap().into_response(),
