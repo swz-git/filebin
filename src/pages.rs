@@ -30,7 +30,6 @@ fn render_file(filename: &str, json: &serde_json::Value) -> Result<String, Box<d
     }?;
     let test = file_contents.data.to_vec();
     let file_str = std::str::from_utf8(&test)?;
-    // TODO: inefficient?
     Ok(reg.render_template(file_str, json)?)
 }
 

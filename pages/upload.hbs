@@ -42,7 +42,7 @@
     let dropzone = new Dropzone("div#my-dropzone", {
       url: "/api/file",
       paramName: "file", // The name that will be used to transfer the file
-      maxFilesize: {{ maxFilesize }} / 1024 / 1024, // MiB //TODO: should sync up with the actual backend limit
+      maxFilesize: {{ maxFilesize }} / 1024 / 1024, // MiB
       chunking: false,
       accept: function(file, done) {
         done()
@@ -57,7 +57,7 @@
         })
         this.on("error", e => {
           console.error(e)
-          alert("Sorry, we encountered an error uploading your file.")
+          alert("Sorry, we encountered an error uploading your file. \n" + e.xhr.responseText)
           // window.location = window.location
         })
       }

@@ -5,7 +5,6 @@ use std::{
 
 use api::get_api_router;
 use axum::{response::Redirect, routing::get, Router};
-use byte_unit::{n_gb_bytes, n_gib_bytes, n_mb_bytes, n_mib_bytes};
 use figment::{
     providers::{Env, Format, Serialized, Toml},
     Figment,
