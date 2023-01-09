@@ -8,6 +8,7 @@ use axum::{
     routing::get,
     Router,
 };
+use chrono::Duration;
 use handlebars::Handlebars;
 use rust_embed::RustEmbed;
 use serde_json::json;
@@ -34,11 +35,19 @@ fn render_file(filename: &str, json: &serde_json::Value) -> Result<String, Box<d
 }
 
 async fn upload(State(state): State<AppState>) -> Response {
+    let timeago = timeago::Formatter::new();
+
     let body = render_file(
         "upload.hbs",
         &json!({
             "maxFilesize": (&state.config.file_size_limit).get_bytes() as u64,
-            "maxFilesizeReadable": state.config.file_size_limit.get_appropriate_unit(true).to_string().replace(".00", "")
+            "maxFilesizeReadable": state.config.file_size_limit.get_appropriate_unit(true).to_string().replace(".00", ""),
+            "maxUploadPerPeriodText": format!(
+                "Upload limit is {} per {}",
+                state.config.ratelimit_period_byte_limit.get_appropriate_unit(true).to_string().replace(".00", ""),
+                timeago.convert(Duration::seconds(state.config.ratelimit_period_length as i64).to_std().expect("couldn't calculate timeago"))
+                    .replace(" ago", "")
+            ),
         }),
     )
     .expect("rendering failed");

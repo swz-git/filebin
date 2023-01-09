@@ -35,3 +35,4 @@ tokio-util = { version = "0.7.4", features = ["io"] }
 byte-unit = { version = "4.0.18", features = ["serde"] }
 owo-colors = "3.5.0"
 axum-client-ip = "0.3.0"
+timeago = "0.4.0"
