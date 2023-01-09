@@ -22,8 +22,6 @@ use tokio::{
 };
 use uuid::Uuid;
 
-// TODO: rate limit, maybe based on ip? accounts (probably not)? api keys?
-
 // since multipart consumes body, it needs to be last for some reason. introduced in axum 0.6
 async fn upload(
     State(state): State<AppState>,
@@ -67,6 +65,7 @@ async fn upload(
         size: file_field.bytes.len(),
     };
 
+    // TODO: should we really use ip for ratelimiting?
     let ratelimited = !timebased_ratelimit(
         &ip_address.to_string(),
         file_info.size as u64,
