@@ -100,6 +100,7 @@ pub struct AppState {
     priv_config: PrivAppConfig,
 }
 
+// TODO: graceful shutdown?
 #[tokio::main]
 async fn main() {
     setup_logger().expect("Couldn't initialize logger");
