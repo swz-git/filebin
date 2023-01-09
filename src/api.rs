@@ -1,6 +1,6 @@
 use crate::{
     dbman::{self, FileInfo},
-    utils::{should_preview, unique_id},
+    utils::{should_preview, timebased_ratelimit, unique_id},
     AppConfig, AppState,
 };
 use axum::{
@@ -8,12 +8,13 @@ use axum::{
     extract::{DefaultBodyLimit, Multipart, Path, State},
     http::{
         header::{self},
-        HeaderMap,
+        HeaderMap, StatusCode,
     },
     response::{IntoResponse, Response},
     routing::{get, post},
     Router,
 };
+use axum_client_ip::ClientIp;
 use axum_extra::body::AsyncReadBody;
 use tokio::{
     fs::File,
@@ -24,7 +25,11 @@ use uuid::Uuid;
 // TODO: rate limit, maybe based on ip? accounts (probably not)? api keys?
 
 // since multipart consumes body, it needs to be last for some reason. introduced in axum 0.6
-async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Response {
+async fn upload(
+    State(state): State<AppState>,
+    ClientIp(ip_address): ClientIp,
+    mut multipart: Multipart,
+) -> Response {
     struct FileFieldData {
         file_name: String,
         content_type: String,
@@ -61,6 +66,23 @@ async fn upload(State(state): State<AppState>, mut multipart: Multipart) -> Resp
         name: file_field.file_name,
         size: file_field.bytes.len(),
     };
+
+    let ratelimited = !timebased_ratelimit(
+        &ip_address.to_string(),
+        file_info.size as u64,
+        &state,
+        false,
+    )
+    .expect("couldn't check ratelimiter");
+
+    // TODO: check ratelimiter before entire body is received
+    if ratelimited {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "Uploading this file will override your upload limit of today. Return in 24 hours.",
+        )
+            .into_response();
+    }
 
     dbman::store_file(file_field.bytes.try_into().unwrap(), &file_info, &state)
         .await

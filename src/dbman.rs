@@ -15,10 +15,7 @@ use crate::AppState;
 /*
 # Custom database using sled
 
-Data is stored with a key like this: `filebin:storage:[ID]`
-The value is just the file
-
-Metadata is stored with a key like this: `filebin:metadata:[ID]`
+Metadata is stored with a key like this: `metadata:[ID]`
 The value is just the FileInfo struct encoded with bincode
 */
 
@@ -47,7 +44,7 @@ pub struct FileInfo {
 const BINCODE_CONFIG: bincode::config::Configuration = bincode::config::standard();
 
 pub fn read_file_info(id: String, db: &Db) -> Option<FileInfo> {
-    let encoded_file_info: &[u8] = &db.get(format!("filebin:metadata:{}", id)).ok()??;
+    let encoded_file_info: &[u8] = &db.get(format!("metadata:{}", id)).ok()??;
     let file_info: FileInfo = decode_from_slice(encoded_file_info, BINCODE_CONFIG).ok()?.0;
     log::debug!("Read file info {}", file_info.id);
     Some(file_info)
@@ -77,11 +74,9 @@ pub async fn store_file(
         writer.shutdown().await?;
     }
 
-    // db.insert(format!("filebin:storage:{}", file_info.id), file)?;
-    state.db.insert(
-        format!("filebin:metadata:{}", file_info.id),
-        encoded_file_info,
-    )?;
+    state
+        .db
+        .insert(format!("metadata:{}", file_info.id), encoded_file_info)?;
     log::debug!("Wrote file {}", file_info.id);
     Ok(())
 }

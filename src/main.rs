@@ -1,5 +1,6 @@
 use std::{
     fs,
+    net::SocketAddr,
     path::{Path, PathBuf},
 };
 
@@ -61,6 +62,10 @@ fn setup_logger() -> Result<(), fern::InitError> {
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct AppConfig {
     file_size_limit: byte_unit::Byte,
+    /// Length of period in seconds
+    ratelimit_period_length: u64,
+    /// Byte limit you can upload every ratelimit_period_length seconds.
+    ratelimit_period_byte_limit: byte_unit::Byte,
     allowed_preview_mime_regex: String,
     db_path: PathBuf,
     sled_cache_cap: byte_unit::Byte,
@@ -70,11 +75,13 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
-            file_size_limit: byte_unit::Byte::from_str("1 GiB").unwrap(), // 1000000KB == 1GB
+            file_size_limit: byte_unit::Byte::from_str("1 GiB").unwrap(),
+            ratelimit_period_length: 60 * 60 * 24, // One day
+            ratelimit_period_byte_limit: byte_unit::Byte::from_str("2 GiB").unwrap(),
             allowed_preview_mime_regex:
                 r"^((audio|image|video)/[a-z.+-]+|(application/json|text/plain))$".to_string(),
             db_path: Path::new("./filebin_db").to_path_buf(),
-            sled_cache_cap: byte_unit::Byte::from_str("0.5 GiB").unwrap(), // 500_000KB = .5GB
+            sled_cache_cap: byte_unit::Byte::from_str("0.5 GiB").unwrap(),
             port: 8080,
         }
     }
@@ -140,7 +147,8 @@ async fn main() {
         .with_state(app_state);
 
     let address = format!("0.0.0.0:{}", config.port);
-    let server = axum::Server::bind(&address.parse().unwrap()).serve(app.into_make_service());
+    let server = axum::Server::bind(&address.parse().unwrap())
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>());
     log::info!("Serving filebin on {}", address);
     server.await.unwrap();
 }
