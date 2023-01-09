@@ -1,0 +1,11 @@
+version: "3.3"
+services:
+  main:
+    build:
+      context: .
+    environment:
+      - PORT=8080
+    volumes:
+      - ./filebin_db:/usr/filebin/filebin_db
+    ports:
+      - "8080:8080"
