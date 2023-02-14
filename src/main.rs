@@ -58,7 +58,6 @@ fn setup_logger() -> Result<(), fern::InitError> {
     Ok(())
 }
 
-// TODO: add sled cache capacity to config
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct AppConfig {
     file_size_limit: byte_unit::Byte,
