@@ -13,8 +13,8 @@ chrono = { version = "0.4.22", features = ["serde"] }
 config = { version = "0.13.2", features = ["toml"] }
 fern = "0.6.1"
 log = "0.4.17"
-sled = { version = "0.34.7", features = ["compression"] }
-rust-embed = "6.4.1"
+sled = { version = "0.34.7" }
+rust-embed = { version = "6.4.1" }
 bincode = { version = "2.0.0-rc.2", features = ["serde"] }
 mime = "0.3.16"
 serde = "1.0.145"
@@ -38,4 +38,4 @@ tokio-util = { version = "0.7.4", features = ["io"] }
 byte-unit = { version = "4.0.18", features = ["serde"] }
 owo-colors = "3.5.0"
 axum-client-ip = "0.3.0"
-timeago = "0.4.0"
+timeago = { version = "0.4.0", default-features = false }
