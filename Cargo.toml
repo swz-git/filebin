@@ -39,3 +39,4 @@ byte-unit = { version = "4.0.18", features = ["serde"] }
 owo-colors = "3.5.0"
 axum-client-ip = "0.3.0"
 timeago = { version = "0.4.0", default-features = false }
+sha3 = "0.10.6"

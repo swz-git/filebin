@@ -1,12 +1,13 @@
-use std::error::Error;
+use std::{error::Error, path::PathBuf};
 
 use async_compression::tokio::{bufread::BrotliDecoder, write::BrotliEncoder};
 use bincode::{serde::decode_from_slice, Decode, Encode};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sha3::{Digest, Sha3_512};
 use sled::Db;
 use tokio::{
-    fs::File,
+    fs::{self, File},
     io::{AsyncWriteExt, BufReader, BufStream},
 };
 
@@ -50,20 +51,21 @@ pub fn read_file_info(id: String, db: &Db) -> Option<FileInfo> {
     Some(file_info)
 }
 
+fn file_path_from_id(id: &str, state: &AppState) -> PathBuf {
+    state.priv_config.blob_path.join(format!("{}.br", id))
+}
+
 // TODO: maybe make this buf (stream) for perf, if possible
 pub async fn store_file(
     file: Vec<u8>,
     file_info: &FileInfo,
     state: &AppState,
 ) -> Result<(), Box<dyn Error>> {
-    let encoded_file_info = bincode::encode_to_vec(file_info, BINCODE_CONFIG)?;
+    let encoded_file_info = bincode::encode_to_vec(&file_info, BINCODE_CONFIG)?;
 
     // write file to DB_PATH/blob/id.br using brotli compression
     {
-        let target_file_path = state
-            .priv_config
-            .blob_path
-            .join(format!("{}.br", file_info.id));
+        let target_file_path = file_path_from_id(&file_info.id, &state);
 
         let target_file = File::create(target_file_path).await?;
         let mut writer = BrotliEncoder::with_quality(
@@ -111,4 +113,34 @@ pub async fn read_file(id: String, state: &AppState) -> Option<(BufReader<File>,
     Some((buffer, length))
 }
 
-// TODO: delete file function
+pub async fn delete_file(
+    id: String,
+    actual_deletion_key: String,
+    state: &AppState,
+) -> Result<bool, Box<dyn Error>> {
+    let file_info = read_file_info(id, &state.db).ok_or("couldn't find file with specified id")?;
+
+    let mut hasher = Sha3_512::new();
+
+    hasher.update(&actual_deletion_key);
+    hasher.update(&file_info.name); // salt, idk if needed but why not
+
+    let hashed_deletion_key_raw = hasher.finalize();
+
+    let hashed_deletion_key =
+        base64::encode_config(hashed_deletion_key_raw, base64::URL_SAFE).replace('=', "");
+
+    let valid_deletion_key = hashed_deletion_key == file_info.deletion_key;
+
+    if !valid_deletion_key {
+        return Ok(false);
+    }
+
+    let target_file_path = file_path_from_id(&file_info.id, &state);
+
+    fs::remove_file(target_file_path).await?;
+
+    state.db.remove(format!("metadata:{}", file_info.id))?;
+
+    Ok(true)
+}

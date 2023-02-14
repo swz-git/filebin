@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     dbman::{self, FileInfo},
     utils::{should_preview, timebased_ratelimit, unique_id},
@@ -5,17 +7,18 @@ use crate::{
 };
 use axum::{
     body::{boxed, Bytes},
-    extract::{DefaultBodyLimit, Multipart, Path, State},
+    extract::{DefaultBodyLimit, Multipart, Path, Query, State},
     http::{
         header::{self},
         HeaderMap, StatusCode,
     },
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use axum_client_ip::ClientIp;
 use axum_extra::body::AsyncReadBody;
+use sha3::{Digest, Sha3_512};
 use tokio::{
     fs::File,
     io::{BufReader, BufStream},
@@ -56,10 +59,22 @@ async fn upload(
 
     let uid = unique_id();
 
+    let actual_deletion_key = Uuid::new_v4().to_string();
+
+    let mut hasher = Sha3_512::new();
+
+    hasher.update(&actual_deletion_key);
+    hasher.update(&file_field.file_name); // salt, idk if needed but why not
+
+    let hashed_deletion_key_raw = hasher.finalize();
+
+    let hashed_deletion_key =
+        base64::encode_config(hashed_deletion_key_raw, base64::URL_SAFE).replace('=', "");
+
     let file_info = FileInfo {
         mime_type: file_field.content_type,
         upload_date: chrono::offset::Utc::now(),
-        deletion_key: Uuid::new_v4().to_string(),
+        deletion_key: hashed_deletion_key,
         id: uid.clone(),
         name: file_field.file_name,
         size: file_field.bytes.len(),
@@ -87,10 +102,15 @@ async fn upload(
         .await
         .expect("failed to store file");
 
-    log::info!("Uploaded {} to database", file_info.id);
+    log::info!("Uploaded {} to database", &file_info.id);
+
+    let exposed_file_info = FileInfo {
+        deletion_key: actual_deletion_key, // not recoverable, hashed
+        ..file_info
+    };
 
     IntoResponse::into_response(boxed(
-        serde_json::to_string(&file_info).expect("failed to convert file data to json"),
+        serde_json::to_string(&exposed_file_info).expect("failed to convert file data to json"),
     ))
 }
 
@@ -191,6 +211,48 @@ async fn download(
     }
 }
 
+async fn erase(
+    Path(uid): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> Response {
+    if params.get("key").is_none() {
+        return Response::builder()
+            .status(400)
+            .body(boxed(
+                "You need to provide a deletion key. DELETE /api/file/[ID]?key=[DELETION_KEY]"
+                    .to_string(),
+            )) // I have no idea why this needs to be boxed but whatever
+            .unwrap();
+    }
+    let maybe_deleted = dbman::delete_file(
+        uid,
+        params
+            .get("key")
+            .ok_or("Couldn't find deletion key (should'ave been checked for above)")
+            .unwrap()
+            .to_owned(),
+        &state,
+    )
+    .await;
+    if maybe_deleted.is_err() {
+        return Response::builder()
+            .status(500)
+            .body(boxed(
+                "Deletion failed, maybe file doesn't exist?".to_string(),
+            )) // I have no idea why this needs to be boxed but whatever
+            .unwrap();
+    }
+    let deleted = maybe_deleted.unwrap();
+    if !deleted {
+        return Response::builder()
+            .status(400)
+            .body(boxed("Invalid deletion key".to_string())) // I have no idea why this needs to be boxed but whatever
+            .unwrap();
+    }
+    IntoResponse::into_response("Deletion successful")
+}
+
 async fn index() -> Response {
     IntoResponse::into_response("API Is live")
 }
@@ -200,6 +262,7 @@ pub fn get_api_router(config: AppConfig) -> Router<AppState> {
         .route("/", get(index))
         .route("/file", post(upload))
         .route("/file/:file", get(download)) // TODO: Cache system caching files under 10mb or similar
+        .route("/file/:file", delete(erase))
         .layer(DefaultBodyLimit::max(
             (config.file_size_limit.get_bytes() + 1024) as usize,
         ))
