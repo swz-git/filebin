@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="/style.css" />
+
+        <link rel="icon" type="image/x-icon" href="/filebin-ico.svg" />
+
+        <script src="/htmx.min.js"></script>
+        <title>filebin</title>
+    </head>
+    <body>
+        <header>
+            <h1>filebin</h1>
+            <div class="grow"></div>
+            <a href="/uploads">my uploads</a>
+        </header>
+        <div class="main">
+            <!-- {% if let Some(active_user) = active_user %}
+            <p>Hello, {{ active_user }}</p>
+            {% else %}
+            <p>Not logged in.</p>
+            {% endif %} -->
+            <table>
+                <thead>
+                    <tr>
+                        <td>File</td>
+                        <td>Size</td>
+                        <td>Mime Type</td>
+                        <td>Actions</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><a href="/f/1">image.png</a></td>
+                        <td>1MiB</td>
+                        <td>image/png</td>
+                        <td><button>Delete</button></td>
+                        <!-- TODO: ^ Send a DELETE request that returns a html delete page -->
+                    </tr>
+                    <tr>
+                        <td><a href="/f/2">text.txt</a></td>
+                        <td>1KiB</td>
+                        <td>text/plain</td>
+                        <td><button>Delete</button></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="dropZone">
+                <h1>Drop files here to upload...</h1>
+                <button>File Picker</button>
+            </div>
+        </div>
+        <footer>
+            <p>We use cookies to remember your uploaded items.</p>
+        </footer>
+    </body>
+</html>

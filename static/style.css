@@ -1,0 +1,83 @@
+* {
+    box-sizing: border-box;
+
+    font-family: "Roboto Slab", Georgia, "Times New Roman", Times, serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+}
+
+html,
+body,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    padding: 0;
+    margin: 0;
+}
+
+html,
+body {
+    display: flex;
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    padding: 1rem;
+    background-color: #eee;
+    background-image: url("/grain.svg");
+    flex-direction: column;
+}
+
+header h1 {
+    font-size: 3rem;
+    transform: translateY(-20%);
+}
+
+footer,
+header {
+    display: flex;
+    justify-content: center;
+    user-select: none;
+}
+
+.grow {
+    flex-grow: 1;
+}
+
+.main {
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-direction: column;
+}
+
+table {
+    border-collapse: collapse;
+    font-size: 1.4rem;
+    border: 1px solid #00000022;
+}
+td {
+    padding: 0 0.5rem;
+}
+td:last-child {
+    text-align: right;
+}
+thead tr {
+    background-color: #323232;
+    color: white;
+    border-bottom: 1px solid #00000022;
+}
+tr {
+    line-height: 2;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #00000022;
+}
