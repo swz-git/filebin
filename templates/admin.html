@@ -15,32 +15,18 @@
         <link rel="icon" type="image/x-icon" href="/filebin-ico.svg" />
 
         <script src="/htmx.min.js"></script>
-        <title>filebin</title>
+        <title>filebin ADMIN</title>
     </head>
     <body>
         <header>
             <div class="logoContainer">
                 <h1>filebin</h1>
-                <p>file uploading service</p>
+                <p>admin panel</p>
             </div>
             <div class="grow"></div>
-            <a href="/admin">admin panel</a>
+            <a href="/">back</a>
         </header>
         <div class="main">
-            <div></div>
-
-            <form
-                hx-post="/api/file"
-                class="dropZone"
-                enctype="multipart/form-data"
-                hx-swap="none"
-                hx-on::after-request="window.location.reload()"
-            >
-                <h1>Drop files to upload...</h1>
-                <input id="fileInput" type="file" name="file" />
-                <button type="submit">Submit</button>
-            </form>
-
             <table>
                 <thead>
                     <tr>
@@ -60,7 +46,7 @@
                         <td>{{ file.mime }}</td>
                         <td>
                             <button
-                                hx-delete="/api/file/{{ file.slug }}"
+                                hx-delete="/api/file/{{ file.slug }}?key={{ file.admin_key }}"
                                 hx-trigger="click"
                                 hx-swap="none"
                                 hx-on::after-request="window.location.reload()"
@@ -71,53 +57,12 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td><p>None...</p></td>
+                        <td><p>Database is empty...</p></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        <footer>
-            <p>We use cookies to remember your uploaded items.</p>
-        </footer>
+        <footer></footer>
     </body>
-
-    <!-- Drag and drop styling -->
-    <script>
-        // Minimal JS to bind file drop to the hidden input + trigger HTMX form submit
-        document.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            document.body.classList.add("dropHover");
-        });
-
-        document.addEventListener("dragleave", (e) => {
-            document.body.classList.remove("dropHover");
-        });
-
-        document.addEventListener("drop", (e) => {
-            e.preventDefault();
-            document.body.classList.remove("dropHover");
-
-            const fileInput = document.getElementById("fileInput");
-            fileInput.files = e.dataTransfer.files;
-            htmx.trigger(".dropZone", "submit");
-        });
-    </script>
-    <style>
-        body.dropHover:after {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            content: "Drop file to upload";
-            font-size: 4rem;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            color: white;
-            z-index: 999;
-        }
-    </style>
 </html>

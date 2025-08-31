@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="/style.css" />
+
+        <link rel="icon" type="image/x-icon" href="/filebin-ico.svg" />
+
+        <script src="/htmx.min.js"></script>
+        <title>filebin</title>
+    </head>
+    <body>
+        <header>
+            <div class="logoContainer">
+                <h1>filebin</h1>
+                <p>file uploading service</p>
+            </div>
+            <div class="grow"></div>
+            <a href="/">home</a>
+        </header>
+        <div class="main">
+            <div class="centerbox">
+                <h1>"{{ file.name }}"</h1>
+                <h3>{{ file.slug }}</h3>
+                <a href="{{ dl_url }}" target="_blank">
+                    <button>Download</button>
+                </a>
+            </div>
+        </div>
+        <footer>
+            <p>We use cookies to remember your uploaded items.</p>
+        </footer>
+    </body>
+</html>

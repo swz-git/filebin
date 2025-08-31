@@ -34,9 +34,15 @@ body {
     flex-direction: column;
 }
 
+input[type="file"] {
+    background: transparent;
+}
+
+header .logoContainer {
+    transform: translateY(-20%);
+}
 header h1 {
     font-size: 3rem;
-    transform: translateY(-20%);
 }
 
 footer,
@@ -53,31 +59,51 @@ header {
 .main {
     flex-grow: 1;
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
+    gap: 10vh;
     flex-direction: column;
 }
 
+.main > *:last-child {
+    margin-bottom: 5rem;
+}
+
 table {
+    display: grid;
+    grid-template-columns: auto auto auto auto;
     border-collapse: collapse;
     font-size: 1.4rem;
     border: 1px solid #00000022;
 }
+thead,
+tbody,
+tr {
+    display: contents; /* Flatten so cells participate in the parent grid */
+}
 td {
     padding: 0 0.5rem;
+    background: inherit;
 }
 td:last-child {
     text-align: right;
+}
+td.shrinkText {
+    /*max-width: 4rem;*/
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 thead tr {
     background-color: #323232;
     color: white;
     border-bottom: 1px solid #00000022;
 }
-tr {
-    line-height: 2;
-}
 
 tbody tr:nth-child(even) {
     background-color: #00000022;
+}
+
+footer {
+    text-align: center;
 }
