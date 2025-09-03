@@ -1,11 +1,8 @@
+dev_binary_loc := '''target/debug/filebin'''
+
 dev:
-    # Sets password to "p"
-    FILEBIN_ARGON='$argon2id$v=19$m=4096,t=3,p=1$ZmlsZWJpbl8$UaB9tFyhQqfqNfJi8SECZMooJY80aUOTJXNdWPAkbLc' \
-    RUST_LOG=info \
-    watchexec --watch templates --watch src --restart cargo run
+    watchexec --watch templates --watch src --watch .env --restart "cargo build && {{ dev_binary_loc }}"
 
 prof:
     cargo build
-    FILEBIN_ARGON='$argon2id$v=19$m=4096,t=3,p=1$ZmlsZWJpbl8$UaB9tFyhQqfqNfJi8SECZMooJY80aUOTJXNdWPAkbLc' \
-    RUST_LOG=info \
-    samply record target/debug/filebin
+    samply record {{ dev_binary_loc }}

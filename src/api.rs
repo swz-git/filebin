@@ -8,7 +8,7 @@ use std::{
 use axum::{
     Router,
     extract::{Multipart, Path, Query, State, multipart::Field},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     response::{IntoResponse, Response},
     routing::{delete, post},
 };
@@ -17,12 +17,7 @@ use ormlite::Model;
 use tokio::io::{AsyncWriteExt, duplex};
 use tracing::error;
 
-use crate::{
-    AppState,
-    db::{Compression, FileEntry},
-    generate_secure_password,
-    slug::Slug,
-};
+use crate::{AppState, db::FileEntry, generate_secure_password, slug::Slug};
 
 async fn upload(State(state): State<Arc<AppState>>, mut multipart: Multipart) -> Response {
     let maybe_file_field: Option<Field> = loop {
@@ -43,25 +38,19 @@ async fn upload(State(state): State<Arc<AppState>>, mut multipart: Multipart) ->
             .into_response();
     };
 
-    let file_name = match file_field.file_name() {
-        Some(x) => x.to_string(),
-        None => {
-            return (
-                StatusCode::BAD_REQUEST,
-                "Bad request: no file name in multipart field",
-            )
-                .into_response();
-        }
+    let Some(file_name) = file_field.file_name().map(|x| x.to_owned()) else {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Bad request: no file name in multipart field",
+        )
+            .into_response();
     };
-    let content_type = match file_field.content_type() {
-        Some(x) => x.to_string(),
-        None => {
-            return (
-                StatusCode::BAD_REQUEST,
-                "Bad request: no content type in multipart field",
-            )
-                .into_response();
-        }
+    let Some(content_type) = file_field.content_type().map(|x| x.to_owned()) else {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Bad request: no content type in multipart field",
+        )
+            .into_response();
     };
 
     let (mut sender, mut rx) = duplex(50 * 1024 * 1024);
@@ -76,8 +65,6 @@ async fn upload(State(state): State<Arc<AppState>>, mut multipart: Multipart) ->
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_millis() as i64,
-            compression: Compression::None,
-            data: vec![],
             admin_key: generate_secure_password(),
         }
         .insert_streaming(&mut rx, &mut *state.sqldb.write().await, &state.bucket)
@@ -90,6 +77,8 @@ async fn upload(State(state): State<Arc<AppState>>, mut multipart: Multipart) ->
             return (StatusCode::INTERNAL_SERVER_ERROR, "Insert failed").into_response();
         };
     }
+
+    // Important, tells green thread to exit
     drop(sender);
 
     let result = t.await.unwrap();

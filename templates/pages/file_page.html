@@ -29,7 +29,9 @@
         <div class="main">
             <div class="centerbox">
                 <h1>"{{ file.name }}"</h1>
-                <h3>{{ file.slug }}</h3>
+                <h3>
+                    {{ file.upload_date }} | {{ file.size }} | {{ file.slug }}
+                </h3>
                 <a href="{{ dl_url }}" target="_blank">
                     <button>Download</button>
                 </a>

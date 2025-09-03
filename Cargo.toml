@@ -37,6 +37,12 @@ humantime = "2.2.0"
 chrono = "0.4.41"
 dotenvy = "0.15.7"
 tokio-util = { version = "0.7.16", features = ["io"] }
-object_store = { version = "0.12.3", features = ["aws"] }
+object_store = { git = "https://github.com/swz-git/arrow-rs-object-store", rev = "ab67b35", features = [
+    "aws",
+] }
 futures = "0.3.31"
 futures-util = "0.3.31"
+tower-http = { version = "0.6.6", features = [
+    "compression-br",
+    "compression-gzip",
+] }

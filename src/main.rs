@@ -5,7 +5,7 @@ use axum::{
     Router,
     extract::{DefaultBodyLimit, Path, Request, State},
     http::{
-        HeaderValue, StatusCode,
+        HeaderMap, HeaderValue, StatusCode,
         header::{CONTENT_TYPE, SERVER, USER_AGENT, WWW_AUTHENTICATE},
     },
     response::{Html, IntoResponse, Redirect, Response},
@@ -13,7 +13,7 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use base64::{Engine, prelude::BASE64_URL_SAFE};
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 use color_eyre::eyre::{self, Context};
 use humansize::BINARY;
 use object_store::{ObjectStore as _, aws::AmazonS3, path::Path as ObjPath};
@@ -21,6 +21,7 @@ use ormlite::Model;
 use rand::Rng as _;
 use sqlx::{Connection as _, SqliteConnection};
 use tokio::sync::RwLock;
+use tower_http::compression::CompressionLayer;
 use tracing::{debug, error, info};
 
 use crate::{api::api_router, db::FileEntry, slug::Slug};
@@ -43,9 +44,9 @@ impl From<FileEntry> for SafeFileEntry {
             name: value.name,
             slug: value.slug.to_string(),
             size: humansize::format_size(value.size as u32, BINARY),
-            upload_date: NaiveDateTime::from_timestamp_opt(value.upload_date, 0)
+            upload_date: DateTime::from_timestamp_millis(value.upload_date)
                 .unwrap()
-                .format("%Y-%m-%d %H:%M:%S")
+                .format("%Y-%m-%d %H:%M:%S UTC")
                 .to_string(),
             mime: value.mime,
         }
@@ -53,7 +54,7 @@ impl From<FileEntry> for SafeFileEntry {
 }
 
 #[derive(Template)]
-#[template(path = "home.html")]
+#[template(path = "pages/home.html")]
 struct HomeTemplate {
     files: Vec<SafeFileEntry>,
 }
@@ -65,7 +66,7 @@ async fn home(State(state): State<Arc<AppState>>, jar: CookieJar) -> Response {
         .filter_map(|slug_str| Slug::from_str(slug_str).ok())
         .collect::<Vec<_>>();
 
-    let files = match db::get_slugs(&mut *state.sqldb.write().await, slugs).await {
+    let files = match db::get_slugs(&mut *state.sqldb.write().await, slugs.iter()).await {
         Ok(x) => x,
         Err(e) => {
             error!("Couldn't fetch all files: {e}");
@@ -73,17 +74,30 @@ async fn home(State(state): State<Arc<AppState>>, jar: CookieJar) -> Response {
         }
     };
 
-    for valid_slug in files.iter().map(|x| x.slug) {}
+    let mut set_cookie_headers: HeaderMap = Default::default();
+
+    for received_slug in slugs.iter() {
+        if files.iter().find(|x| &x.slug == received_slug).is_none() {
+            set_cookie_headers.append(
+                "Set-Cookie",
+                format!("FB_SLUG_KEY_{received_slug}=INVALID; Max-Age=0")
+                    .parse()
+                    .unwrap(),
+            );
+        }
+    }
 
     let tpl = HomeTemplate {
         files: files.into_iter().map(Into::into).collect(),
     };
-    Html(tpl.render().unwrap()).into_response()
+    let mut res = Html(tpl.render().unwrap()).into_response();
+    res.headers_mut().extend(set_cookie_headers);
+    res
 }
 
 // TODO: make ts good
 #[derive(Template)]
-#[template(path = "admin.html")]
+#[template(path = "pages/admin.html")]
 struct AdminTemplate {
     files: Vec<db::FileEntry>,
 }
@@ -131,7 +145,7 @@ async fn admin(State(state): State<Arc<AppState>>, req: Request) -> Response {
 }
 
 #[derive(Template)]
-#[template(path = "file_page.html")]
+#[template(path = "pages/file_page.html")]
 struct FilePageTemplate {
     file: SafeFileEntry,
     dl_url: String,
@@ -216,10 +230,11 @@ fn get_admin_pswd_hash() -> String {
 
 // TODO: Ratelimiting 1GiB per day, unless admin?
 // TODO: Move old...
+// TODO: /hx/ api where we serve html for htmx. would be nice for progress bars etc.
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> eyre::Result<()> {
-    dotenvy::dotenv()?;
+    let _ = dotenvy::dotenv();
     tracing_subscriber::fmt::init();
 
     let admin_pswd_hash = get_admin_pswd_hash();
@@ -248,8 +263,6 @@ async fn main() -> eyre::Result<()> {
             size INTEGER NOT NULL,
             upload_date INTEGER NOT NULL,
             mime TEXT NOT NULL,
-            compression TEXT NOT NULL,
-            data BLOB NOT NULL,
             admin_key TEXT NOT NULL
         );"#,
     )
@@ -298,6 +311,8 @@ async fn main() -> eyre::Result<()> {
         .route("/", get(home))
         .route("/f/{slug}", get(file_page))
         .route("/admin", get(admin))
+        // EVERYTHING ABOVE GETS COMPRESSED! ^^^
+        .layer(CompressionLayer::new().quality(tower_http::CompressionLevel::Fastest))
         .nest("/api", api_router())
         // Add cool header 😎
         .layer(axum::middleware::from_fn(
