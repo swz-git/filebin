@@ -7,60 +7,116 @@ use std::{
 
 use axum::{
     Router,
-    extract::{Multipart, Path, Query, State, multipart::Field},
-    http::StatusCode,
+    body::Body,
+    extract::{Path, Query, Request, State},
+    http::{StatusCode, header::CONTENT_TYPE},
     response::{IntoResponse, Response},
     routing::{delete, post},
 };
 use axum_extra::extract::CookieJar;
+use multer::{Field, Multipart};
 use ormlite::Model;
 use tokio::io::{AsyncWriteExt, duplex};
 use tracing::error;
 
 use crate::{AppState, db::FileEntry, generate_secure_password, slug::Slug};
 
-async fn upload(State(state): State<Arc<AppState>>, mut multipart: Multipart) -> Response {
-    let maybe_file_field: Option<Field> = loop {
-        let Some(field) = multipart.next_field().await.unwrap() else {
+pub const DUPLEX_BUF_SIZE: usize = 100 * 1024 * 1024;
+
+pub struct ExtractedFileInfo<'a> {
+    pub name: String,
+    pub mime: String,
+    pub field: Field<'a>,
+}
+
+pub async fn extract_file_info<'a>(
+    multipart: &mut Multipart<'a>,
+) -> Result<ExtractedFileInfo<'a>, Response> {
+    let maybe_file_field: Option<Field<'a>> = loop {
+        let Some(field): Option<Field> = multipart.next_field().await.unwrap() else {
             break None;
         };
+        // field
         if field.name() != Some("file") {
             continue;
         }
         break Some(field);
     };
 
-    let Some(mut file_field) = maybe_file_field else {
-        return (
+    let Some(file_field) = maybe_file_field else {
+        return Err((
             StatusCode::BAD_REQUEST,
             "Bad request: no file field in multipart",
         )
-            .into_response();
+            .into_response());
     };
 
-    let Some(file_name) = file_field.file_name().map(|x| x.to_owned()) else {
-        return (
+    let Some(name) = file_field.file_name().map(|x| x.to_owned()) else {
+        return Err((
             StatusCode::BAD_REQUEST,
             "Bad request: no file name in multipart field",
         )
-            .into_response();
+            .into_response());
     };
-    let Some(content_type) = file_field.content_type().map(|x| x.to_owned()) else {
-        return (
+    let Some(mime) = file_field.content_type().map(|x| x.to_string()) else {
+        return Err((
             StatusCode::BAD_REQUEST,
             "Bad request: no content type in multipart field",
         )
-            .into_response();
+            .into_response());
+    };
+    // let Some(size) = file_field..map(|x| x.to_string()) else {
+    //     return Err((
+    //         StatusCode::BAD_REQUEST,
+    //         "Bad request: no content type in multipart field",
+    //     )
+    //         .into_response());
+    // };
+
+    Ok(ExtractedFileInfo {
+        name,
+        mime,
+        field: file_field,
+    })
+}
+
+pub async fn shitty_multipart_extractor<'r>(req: Request<Body>) -> Result<Multipart<'r>, Response> {
+    let Ok(boundary) = multer::parse_boundary(
+        req.headers()
+            .get(CONTENT_TYPE)
+            .map(|x| x.to_str().ok())
+            .flatten()
+            .unwrap_or_default(),
+    ) else {
+        return Err((StatusCode::BAD_REQUEST, "Bad request: invalid multipart").into_response());
+    };
+    let bytes = req.into_body().into_data_stream();
+    Ok(Multipart::new(bytes, boundary))
+}
+
+async fn upload(State(state): State<Arc<AppState>>, req: Request<Body>) -> Response {
+    let mut multipart = match shitty_multipart_extractor(req).await {
+        Ok(x) => x,
+        Err(e) => return e,
     };
 
-    let (mut sender, mut rx) = duplex(50 * 1024 * 1024);
+    let ExtractedFileInfo {
+        name,
+        mime,
+        mut field,
+    } = match extract_file_info(&mut multipart).await {
+        Ok(x) => x,
+        Err(e) => return e,
+    };
+
+    let (mut sender, mut rx) = duplex(DUPLEX_BUF_SIZE);
 
     let t = tokio::spawn(async move {
         FileEntry {
-            name: file_name,
+            name,
             slug: Slug::gen_random(),
             size: 0, // This will be overwritten
-            mime: content_type,
+            mime,
             upload_date: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -71,7 +127,7 @@ async fn upload(State(state): State<Arc<AppState>>, mut multipart: Multipart) ->
         .await
     });
 
-    while let Some(chunk) = file_field.chunk().await.unwrap() {
+    while let Some(chunk) = field.chunk().await.unwrap() {
         if let Err(e) = sender.write_all(&chunk).await {
             error!("Couldn't write chunk to db: {e}");
             return (StatusCode::INTERNAL_SERVER_ERROR, "Insert failed").into_response();

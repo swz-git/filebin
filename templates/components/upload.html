@@ -1,0 +1,69 @@
+<div>
+    <div hx-ext="sse" sse-connect="/hx/progress/{{ slug }}" sse-swap="msg">
+        <h2>Uploading file...</h2>
+    </div>
+    <script type="module">
+        console.log("Uploading...");
+        let fileInput = document.querySelector("#fileInput");
+
+        let sizeHint = fileInput.files[0]?.size;
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        fileInput.setAttribute("hidden", "");
+
+        const response = await fetch(`/hx/file/{{ slug }}?${sizeHint}`, {
+            method: "POST",
+            body: formData, // no need to set Content-Type — Fetch will do it
+        });
+
+        if (!response.ok) {
+            console.error("Upload failed:", response.statusText);
+            alert("Upload failed");
+        } else {
+            const result = await response.text();
+            console.log("Upload success:", result);
+            fileInput.value = "";
+            location.reload();
+        }
+    </script>
+</div>
+
+<style>
+    .bot {
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    progress {
+        width: 300px;
+        height: 20px;
+        appearance: none;
+        margin: 0px 0.6rem;
+        -webkit-appearance: none;
+        border: none;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    /* Background */
+    progress::-webkit-progress-bar {
+        background-color: #eee;
+        border-radius: 10px;
+    }
+
+    /* Value part */
+    progress::-webkit-progress-value {
+        background: linear-gradient(to right, #4facfe, #00f2fe);
+        border-radius: 10px;
+        transition: width 1s ease; /* smooth animation */
+    }
+
+    progress::-moz-progress-bar {
+        background: linear-gradient(to right, #4facfe, #00f2fe);
+        border-radius: 10px;
+        transition: width 1s ease;
+    }
+</style>

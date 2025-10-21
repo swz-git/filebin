@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" style="background: #0f0f0f">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="/style.css" />
+
+        <link rel="icon" type="image/x-icon" href="/filebin-ico.svg" />
+
+        <script src="/htmx.min.js" defer></script>
+        <!--<meta name="htmx-config" content='{"disableInheritance":true}' />-->
+
+        {% block head %}{% endblock %}
+        <title>filebin</title>
+    </head>
+    <body>
+        <header>{% block header %}{% endblock %}</header>
+        <div class="main">{% block content %}{% endblock %}</div>
+        <footer>
+            <p>We use cookies to remember your uploaded items.</p>
+        </footer>
+    </body>
+</html>

@@ -1,7 +1,7 @@
 use std::{mem, str::FromStr, sync::Arc, time::Duration};
 
 use axum::{body::Bytes, http::Method};
-use color_eyre::eyre::{self, Context};
+use color_eyre::eyre::{self};
 use futures::StreamExt as _;
 use object_store::{
     Attribute, AttributeValue, Attributes, ObjectStore as _, PutMultipartOptions, PutPayload,
@@ -86,13 +86,14 @@ impl FileEntry {
             )
             .await?;
 
-        const CHUNK_SIZE: usize = 25 * 1024 * 1024;
+        const CHUNK_SIZE: usize = 500 * 1024 * 1024;
+        const MIN_CHUNK: usize = 5 * 1024 * 1024;
 
         let mut buf = Vec::with_capacity(CHUNK_SIZE);
         let mut total_byte_count = 0i64;
         while let Ok(read_bytes) = reader.read_buf(&mut buf).await {
             total_byte_count += read_bytes as i64;
-            if buf.len() > CHUNK_SIZE || read_bytes == 0 {
+            if buf.len() > MIN_CHUNK || read_bytes == 0 {
                 let mut stolen_buf = Vec::with_capacity(CHUNK_SIZE);
                 mem::swap(&mut buf, &mut stolen_buf);
                 multipart
@@ -107,9 +108,7 @@ impl FileEntry {
 
         self.size = total_byte_count;
 
-        Ok(Model::insert(self, db)
-            .await
-            .context("Sqlite insert failed")?)
+        Ok(Model::insert(self, db).await?)
     }
 
     pub async fn get_s3_dl_link(&self, bucket: &AmazonS3) -> eyre::Result<String> {

@@ -1,68 +1,46 @@
-<!doctype html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link
-            href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&display=swap"
-            rel="stylesheet"
-        />
-        <link rel="stylesheet" href="/style.css" />
-
-        <link rel="icon" type="image/x-icon" href="/filebin-ico.svg" />
-
-        <script src="/htmx.min.js"></script>
-        <title>filebin ADMIN</title>
-    </head>
-    <body>
-        <header>
-            <div class="logoContainer">
-                <h1>filebin</h1>
-                <p>admin panel</p>
-            </div>
-            <div class="grow"></div>
-            <a href="/">back</a>
-        </header>
-        <div class="main">
-            <table>
-                <thead>
-                    <tr>
-                        <td>File</td>
-                        <td>Size</td>
-                        <td>Mime Type</td>
-                        <td>Actions</td>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for file in files %}
-                    <tr>
-                        <td class="shrinkText">
-                            <a href="/f/{{ file.slug }}">{{ file.name }}</a>
-                        </td>
-                        <td>{{ file.size }}</td>
-                        <td>{{ file.mime }}</td>
-                        <td>
-                            <button
-                                hx-delete="/api/file/{{ file.slug }}?key={{ file.admin_key }}"
-                                hx-trigger="click"
-                                hx-swap="none"
-                                hx-on::after-request="window.location.reload()"
-                            >
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td><p>Database is empty...</p></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <footer></footer>
-    </body>
-</html>
+{% extends "_base.html" %} {% block head %}
+<title>filebin ADMIN</title>
+{% endblock %}{% block header %}
+<div class="logoContainer">
+    <h1>filebin</h1>
+    <p>admin panel</p>
+</div>
+<div class="grow"></div>
+<a href="/">back</a>
+{% endblock %}{% block content %}
+<table>
+    <thead>
+        <tr>
+            <td>File</td>
+            <td>Size</td>
+            <td>Mime Type</td>
+            <td>Actions</td>
+        </tr>
+    </thead>
+    <tbody>
+        {% for file in files %}
+        <tr>
+            <td class="shrinkText">
+                <a href="/f/{{ file.slug }}">{{ file.name }}</a>
+            </td>
+            <td>{{ file.size }}</td>
+            <td>{{ file.mime }}</td>
+            <td>
+                <button
+                    hx-delete="/api/file/{{ file.slug }}?key={{ file.admin_key }}"
+                    hx-trigger="click"
+                    hx-swap="none"
+                    hx-on::after-request="window.location.reload()"
+                >
+                    Delete
+                </button>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td><p>Database is empty...</p></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

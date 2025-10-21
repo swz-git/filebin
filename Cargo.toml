@@ -13,11 +13,9 @@ tokio = { version = "1", default-features = false, features = [
 axum = { version = "0.8.4", default-features = false, features = [
     "http1",
     "http2",
-    "json",
     "query",
     "tokio",
     "macros",
-    "multipart",
 ] }
 askama = "0.12"
 rust-embed = { version = "8.7.2", features = ["axum"] }
@@ -46,3 +44,5 @@ tower-http = { version = "0.6.6", features = [
     "compression-br",
     "compression-gzip",
 ] }
+multer = "3.1.0"
+tokio-stream = { version = "0.1.17", features = ["sync"] }

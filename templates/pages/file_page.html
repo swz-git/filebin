@@ -1,44 +1,67 @@
-<!doctype html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link
-            href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&display=swap"
-            rel="stylesheet"
-        />
-        <link rel="stylesheet" href="/style.css" />
-
-        <link rel="icon" type="image/x-icon" href="/filebin-ico.svg" />
-
-        <script src="/htmx.min.js"></script>
-        <title>filebin</title>
-    </head>
-    <body>
-        <header>
-            <div class="logoContainer">
-                <h1>filebin</h1>
-                <p>file uploading service</p>
-            </div>
-            <div class="grow"></div>
-            <a href="/">home</a>
-        </header>
-        <div class="main">
-            <div class="centerbox">
-                <h1>"{{ file.name }}"</h1>
-                <h3>
-                    {{ file.upload_date }} | {{ file.size }} | {{ file.slug }}
-                </h3>
-                <a href="{{ dl_url }}" target="_blank">
-                    <button>Download</button>
-                </a>
-            </div>
-        </div>
-        <footer>
-            <p>We use cookies to remember your uploaded items.</p>
-        </footer>
-    </body>
-</html>
+{% extends "_base.html" %} {% block head %}
+<title>filebin - "{{ file.name }}"</title>
+{% endblock %} {% block header %}
+<div class="logoContainer">
+    <h1>filebin</h1>
+    <p>file uploading service</p>
+</div>
+<div class="grow"></div>
+<a href="/">home</a>
+{% endblock %} {% block content %}
+<div></div>
+<div class="centerbox">
+    <h1>{{ file.name }}</h1>
+    <h3>{{ file.size }} | {{ file.mime }}</h3>
+    <h3>{{ file.upload_date }} | {{ file.slug }}</h3>
+    <div class="buttons">
+        <a href="{{ dl_url }}" download>
+            <button id="dlbutton">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        fill="currentColor"
+                        d="m12 16l-5-5l1.4-1.45l2.6 2.6V4h2v8.15l2.6-2.6L17 11zm-6 4q-.825 0-1.412-.587T4 18v-3h2v3h12v-3h2v3q0 .825-.587 1.413T18 20z"
+                    />
+                </svg>
+                <p>Download</p>
+            </button>
+        </a>
+    </div>
+</div>
+<div></div>
+<style>
+    .buttons:has(#dlbutton) {
+        display: flex;
+        width: 100%;
+        justify-content: center;
+        align-items: center;
+    }
+    #dlbutton {
+        background: #12121290;
+        color: white;
+        border: none;
+        border-radius: 1.5rem;
+        box-shadow: 1px 3px 3px 0px rgba(189, 189, 189, 0.2) inset;
+        font-size: 1.6rem;
+        font-weight: 600;
+        padding: 1rem;
+        margin-top: 2rem;
+        transition: box-shadow 0.1s ease;
+        display: flex;
+        justify-content: center;
+        gap: 0.6rem;
+        padding-right: 1.2rem;
+    }
+    #dlbutton:hover {
+        box-shadow: 1px 3px 3px 2px rgba(189, 189, 189, 0.2) inset;
+        cursor: pointer;
+    }
+    #dlbutton:active {
+        box-shadow: -1px -3px 3px 0px rgba(189, 189, 189, 0.2) inset;
+    }
+</style>
+{% endblock %}

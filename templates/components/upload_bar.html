@@ -1,0 +1,9 @@
+<h2>Uploading file...</h2>
+<progress
+    value="{{ progress.uploaded }}"
+    max="{{ progress.upload_size }}"
+></progress>
+<div class="bot">
+    <p>{{ human_percentage }}</p>
+    <p>{{ human_speed }}/s</p>
+</div>

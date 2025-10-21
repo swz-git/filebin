@@ -24,9 +24,15 @@ use tokio::sync::RwLock;
 use tower_http::compression::CompressionLayer;
 use tracing::{debug, error, info};
 
-use crate::{api::api_router, db::FileEntry, slug::Slug};
+use crate::{
+    api::api_router,
+    db::FileEntry,
+    hx::{HxState, hx_router},
+    slug::Slug,
+};
 mod api;
 mod db;
+mod hx;
 mod slug;
 
 #[derive(Debug, Clone)]
@@ -191,7 +197,9 @@ mod staticfiles;
 
 #[derive(Debug)]
 struct AppState {
+    hx_state: HxState,
     sqldb: RwLock<SqliteConnection>,
+    // db_age: X, // TODO: Do not sweep s3 files older than our sqlite db.
     bucket: AmazonS3,
     admin_pswd_hash: String,
 }
@@ -293,6 +301,7 @@ async fn main() -> eyre::Result<()> {
     );
 
     let state = Arc::new(AppState {
+        hx_state: Default::default(),
         sqldb: RwLock::new(sqldb),
         admin_pswd_hash,
         bucket,
@@ -314,6 +323,7 @@ async fn main() -> eyre::Result<()> {
         // EVERYTHING ABOVE GETS COMPRESSED! ^^^
         .layer(CompressionLayer::new().quality(tower_http::CompressionLevel::Fastest))
         .nest("/api", api_router())
+        .nest("/hx", hx_router())
         // Add cool header 😎
         .layer(axum::middleware::from_fn(
             async |req: Request, next: axum::middleware::Next| {

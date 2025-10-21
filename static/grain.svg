@@ -12,5 +12,5 @@
             <feFuncB type="linear" slope="1.5" intercept="-0.25" />
         </feComponentTransfer>
     </filter>
-    <rect width="100%" height="100%" filter="url(#a)" opacity=".2" />
+    <rect width="100%" height="100%" filter="url(#a)" opacity=".1" />
 </svg>

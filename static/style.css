@@ -1,6 +1,9 @@
 * {
     box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+}
 
+header h1 {
     font-family: "Roboto Slab", Georgia, "Times New Roman", Times, serif;
     font-optical-sizing: auto;
     font-weight: 400;
@@ -25,13 +28,50 @@ body {
     display: flex;
     height: 100%;
     width: 100%;
+    justify-content: center;
 }
 
 body {
     padding: 1rem;
-    background-color: #eee;
-    background-image: url("/grain.svg");
+    max-width: 120vh;
+    background-color: transparent;
+    color: white;
+    /*background-image: url("/grain.svg");*/
     flex-direction: column;
+}
+
+html::after {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    content: "";
+    z-index: -1;
+
+    background: #0f0f0f;
+    background-image: radial-gradient(
+        circle at 20% 20%,
+        #462afc2f 10%,
+        #462afc2a 15%,
+        #0f0f0f00 100%
+    );
+
+    /* Smooth fade-in animation on page load */
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+a {
+    color: lightblue;
 }
 
 input[type="file"] {
@@ -95,13 +135,16 @@ td.shrinkText {
     text-overflow: ellipsis;
 }
 thead tr {
-    background-color: #323232;
+    background-color: #777777aa;
     color: white;
     border-bottom: 1px solid #00000022;
 }
 
+tbody tr:nth-child(odd) {
+    background-color: #77777733;
+}
 tbody tr:nth-child(even) {
-    background-color: #00000022;
+    background-color: #77777766;
 }
 
 footer {
